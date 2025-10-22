@@ -1,24 +1,25 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import React from 'react';
+import { AuthProvider } from '../providers/AuthProvider';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <AuthProvider>
       <Stack>
+        {/* Tabs group */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+
+        {/* Non-tab routes */}
+        <Stack.Screen name="club/[id]" options={{ title: 'Club' }} />
+
+        {/* Review routes use custom compact headers */}
+        <Stack.Screen name="review/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="review/edit/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="review/new" options={{ headerShown: false }} />
+
+        {/* Auth */}
+        <Stack.Screen name="auth/login" options={{ title: 'Sign in' }} />
       </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    </AuthProvider>
   );
 }

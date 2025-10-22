@@ -1,8 +1,13 @@
-import type { NextConfig } from "next";
+// admin-web/next.config.ts
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  reactCompiler: true,
+  experimental: {
+    turbopack: {
+      // make Turbopack treat this folder as the root
+      root: __dirname,
+    },
+  },
 };
 
 export default nextConfig;

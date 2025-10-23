@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 function getSupabaseServer(cookiesIn: { get: (name: string) => string | undefined }) {
-  // Create a minimal response-like cookie adapter for SSR
+  // Minimal response-like cookie adapter for SSR
   const cookieStore = new Map<string, string | undefined>();
 
   return createServerClient(
@@ -31,10 +31,12 @@ function getSupabaseServer(cookiesIn: { get: (name: string) => string | undefine
 }
 
 export default async function AdminHome() {
-  // Next 16 app router: cookies() is async – use the request headers instead via `headers()`
+  // Next 16: cookies() is async
   const { cookies } = await import('next/headers');
+  const cookieStore = await cookies(); // ← await here
+
   const supabase = getSupabaseServer({
-    get: (name) => cookies().get(name)?.value,
+    get: (name) => cookieStore.get(name)?.value, // ← use the awaited store
   });
 
   const {
@@ -42,11 +44,9 @@ export default async function AdminHome() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    // Force unauthenticated to /login even if middleware is skipped
     redirect('/login');
   }
 
-  // Load a small sample so you can confirm it’s protected
   const { data, error } = await supabase
     .from('reviews')
     .select('id,rating,comment,inserted_at,clubs(name)')

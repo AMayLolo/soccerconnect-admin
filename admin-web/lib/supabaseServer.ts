@@ -1,7 +1,7 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+// admin-web/lib/supabaseServer.ts
 import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-// Next 16: cookies() is async; provide async cookie adapter
 export async function createSupabaseServer() {
   const cookieStore = await cookies();
 
@@ -10,14 +10,16 @@ export async function createSupabaseServer() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: async (name: string) => cookieStore.get(name)?.value,
-        set: async (name: string, value: string, options: CookieOptions) => {
-          await cookieStore.set({ name, value, ...options });
+        get(name: string) {
+          return cookieStore.get(name)?.value;
         },
-        remove: async (name: string, options: CookieOptions) => {
-          await cookieStore.set({ name, value: '', ...options });
+        set(_name: string, _value: string, _options: CookieOptions) {
+          // no-op in RSC; mutations should happen in route handlers or actions
         },
-      },
+        remove(_name: string, _options: CookieOptions) {
+          // no-op in RSC
+        }
+      }
     }
   );
 }

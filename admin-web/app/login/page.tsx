@@ -1,70 +1,78 @@
+// admin-web/app/login/page.tsx
 'use client';
 
-import { createBrowserClient } from '@supabase/ssr';
-import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
+  const params = useSearchParams();
   const [email, setEmail] = useState('');
-  const [pwd, setPwd] = useState('');
-  const [err, setErr] = useState<string | null>(null);
+  const [password, setPassword] = useState('');
+  const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const next = params.get('next') || '/';
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setMsg(null);
     setLoading(true);
-    setErr(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pwd });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      setErr(error.message);
+      setMsg(error.message);
       return;
     }
-    router.replace('/protected');
+    router.replace(next);
   };
 
   return (
-    <div style={{ maxWidth: 420, margin: '16vh auto', padding: 24, border: '1px solid #e5e7eb', borderRadius: 12 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Admin sign in</h1>
+    <main style={{ padding: 24, maxWidth: 420, margin: '40px auto' }}>
+      <h1 style={{ fontWeight: 800, fontSize: 22, marginBottom: 16 }}>Admin Login</h1>
       <form onSubmit={onSubmit} style={{ display: 'grid', gap: 12 }}>
-        <input
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          placeholder="Email"
-          type="email"
-          required
-          style={{ padding: 10, borderRadius: 8, border: '1px solid #d1d5db' }}
-        />
-        <input
-          value={pwd}
-          onChange={e => setPwd(e.target.value)}
-          placeholder="Password"
-          type="password"
-          required
-          style={{ padding: 10, borderRadius: 8, border: '1px solid #d1d5db' }}
-        />
+        <label>
+          <div>Email</div>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #ddd' }}
+          />
+        </label>
+        <label>
+          <div>Password</div>
+          <input
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #ddd' }}
+          />
+        </label>
         <button
           disabled={loading}
+          type="submit"
           style={{
-            padding: '10px 12px',
-            borderRadius: 8,
-            background: '#0b5bd3',
-            color: 'white',
+            marginTop: 8,
+            padding: '12px 16px',
+            borderRadius: 10,
+            background: '#1565C0',
+            color: '#fff',
             fontWeight: 700,
-            border: 0,
-            cursor: 'pointer',
           }}
         >
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
-        {err && <p style={{ color: 'crimson' }}>{err}</p>}
+        {msg && <p style={{ color: 'crimson' }}>{msg}</p>}
       </form>
-    </div>
+    </main>
   );
 }

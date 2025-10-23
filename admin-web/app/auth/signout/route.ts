@@ -12,16 +12,7 @@ export async function GET(request: Request) {
     {
       cookies: {
         get(name: string) {
-          // Note: for Route Handlers, read incoming cookies from the request
-          // but mutations must be applied to the response
-          return (response.cookies.get(name)?.value ??
-                  // fallback to request cookies
-                  (('headers' in request &&
-                    // @ts-ignore: Request in Next has headers.get
-                    (request as any).headers?.get('cookie') || '')
-                    .split('; ')
-                    .find((c: string) => c.startsWith(name + '='))
-                    ?.split('=')[1]));
+          return response.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
           response.cookies.set({ name, value, ...options });

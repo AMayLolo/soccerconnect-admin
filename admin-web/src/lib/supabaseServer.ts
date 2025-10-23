@@ -1,33 +1,27 @@
-// admin-web/src/lib/supabaseServer.ts
-import 'server-only';
+// admin-web/lib/supabaseServer.ts
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+/**
+ * Server-side Supabase client for RSC/route handlers.
+ * Next 16: cookies() is async, so this function is async now.
+ */
+export async function createSupabaseServer() {
+  const cookieStore = await cookies(); // <- MUST await in Next 16
 
-// simple fetch wrapper to Supabase REST
-export async function sb<T = any>(
-  path: string,
-  init?: RequestInit
-): Promise<{ data: T | null; error: any }> {
-  const res = await fetch(`${URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: ANON,
-      Authorization: `Bearer ${ANON}`,
-      'Content-Type': 'application/json',
-      ...(init?.headers || {})
-    },
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    let err: any = null;
-    try { err = await res.json(); } catch { err = await res.text(); }
-    return { data: null, error: err };
-  }
-  try {
-    const json = (await res.json()) as T;
-    return { data: json, error: null };
-  } catch {
-    return { data: null, error: null };
-  }
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        // In RSC, cookies are immutable; set/remove are no-ops here.
+        // If you need to write cookies, do it in a Route Handler.
+        set() {},
+        remove() {},
+      },
+    }
+  );
 }

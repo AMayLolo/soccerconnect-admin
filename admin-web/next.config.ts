@@ -2,10 +2,10 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  reactStrictMode: true,
   experimental: {
-    turbopack: {
-      // make Turbopack treat this folder as the root
-      root: __dirname,
+    serverActions: {
+      bodySizeLimit: '2mb',
     },
   },
 };

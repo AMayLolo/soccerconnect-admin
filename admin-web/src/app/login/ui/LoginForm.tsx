@@ -9,7 +9,6 @@ export function LoginForm() {
   const [error, setError] = React.useState<string | null>(null);
   const [sent, setSent] = React.useState(false);
 
-  // Browser client (uses NEXT_PUBLIC_ env vars)
   const supabase = React.useMemo(
     () =>
       createBrowserClient(
@@ -38,12 +37,7 @@ export function LoginForm() {
   };
 
   if (sent) {
-    return (
-      <p>
-        Check your email for a magic link. After signing in, you’ll land on the
-        admin dashboard.
-      </p>
-    );
+    return <p>Check your email for a magic link.</p>;
   }
 
   return (
@@ -62,13 +56,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        style={{
-          padding: '10px 14px',
-          background: '#1565C0',
-          color: 'white',
-          borderRadius: 8,
-          border: 0,
-        }}
+        style={{ padding: '10px 14px', background: '#1565C0', color: 'white', borderRadius: 8, border: 0 }}
       >
         {loading ? 'Sending…' : 'Send magic link'}
       </button>

@@ -26,14 +26,14 @@ export async function middleware(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const { pathname, origin } = req.nextUrl;
 
-  // Not logged in → send to /login
+  // Not logged in → go to /login
   if (!user && pathname !== '/login') {
     const url = new URL('/login', origin);
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
   }
 
-  // Already logged in → keep them out of /login
+  // Logged in → keep them out of /login
   if (user && pathname === '/login') {
     return NextResponse.redirect(new URL('/protected', origin));
   }

@@ -1,61 +1,56 @@
+// admin-web/app/protected/layout.tsx
 import React from 'react';
 import { redirect } from 'next/navigation';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import AdminTopBar from '@/components/AdminTopBar';
+import { createSupabaseServer } from '@/lib/supabaseServer';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-async function getSupabase(cookies: () => Promise<Headers>) {
-  // Helper to align with Next 16 async cookies()
-  const cookieHeader = (await cookies()).get('cookie');
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieHeader?.match(new RegExp(`${name}=([^;]+)`))?.[1];
-        },
-        set() {},
-        remove() {},
-      },
-    }
-  );
+// Server Action to sign out
+async function signOutAction() {
+  'use server';
+  const supabase = await createSupabaseServer();
+  await supabase.auth.signOut();
+  redirect('/login');
 }
 
-export default async function ProtectedLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  // Next 16: cookies() is async
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  const cookieStore = async () => new Headers([['cookie', (await import('next/headers')).cookies().toString()]]);
-  const supabase = await getSupabase(cookieStore);
+export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createSupabaseServer();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // Optional: ensure admin record exists
+  // Optional: check admin role
   const { data: adminRow } = await supabase
     .from('admin_users')
     .select('role')
     .eq('id', user.id)
     .maybeSingle();
-
   if (!adminRow) redirect('/login?e=not_admin');
 
   return (
-    <html lang="en">
-      <body>
-        <AdminTopBar />
-        <div style={{ maxWidth: 980, margin: '16px auto', padding: '0 16px' }}>
-          {children}
-        </div>
-      </body>
-    </html>
+    <div>
+      {/* simple header so you can verify it’s the protected shell */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        background: '#0B63CE',
+        color: 'white',
+        padding: '10px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <strong>Soccer Connect • Admin</strong>
+        <form action={signOutAction}>
+          <button type="submit" style={{ background: 'white', color: '#0B63CE', borderRadius: 6, padding: '6px 10px' }}>
+            Sign out
+          </button>
+        </form>
+      </div>
+
+      <div style={{ padding: 16 }}>{children}</div>
+    </div>
   );
 }

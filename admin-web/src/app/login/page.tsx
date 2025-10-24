@@ -1,3 +1,4 @@
+// admin-web/src/app/login/page.tsx
 import { Suspense } from 'react';
 import LoginClient from './LoginClient';
 
@@ -6,9 +7,8 @@ export const revalidate = 0;
 
 export default function LoginPage() {
   return (
-    <main style={{ padding: 24, maxWidth: 560 }}>
-      <h1>Admin Login</h1>
-      <Suspense fallback={<p>Loading…</p>}>
+    <main className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <Suspense fallback={<div className="text-gray-500">Loading…</div>}>
         <LoginClient />
       </Suspense>
     </main>

@@ -1,8 +1,8 @@
 // admin-web/src/app/login/page.tsx
-import { Suspense } from 'react';
-import { redirect } from 'next/navigation';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 
 async function getSessionAndRole() {
   // read incoming request cookies

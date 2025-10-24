@@ -1,47 +1,45 @@
 // src/app/protected/page.tsx
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import Link from 'next/link';
-import FlaggedTableClient from './flagged/FlaggedTableClient';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-type LatestRow = {
+type CountRow = { label: string; count: number };
+type FlaggedRow = {
   id: string;
-  rating: number | null;
+  rating: number;
   comment: string | null;
-  category: 'parent' | 'player' | 'staff' | null;
+  category: string | null;
   inserted_at: string;
   club_name: string | null;
 };
 
-export default async function AdminDashboard() {
+export default async function AdminDashboardPage() {
   const supabase = await createSupabaseServer();
 
-  // ---- 1) Stats for the cards at top ----
-  const [
-    totalCountRes,
-    avgRatingRes,
-    flaggedCountRes,
-  ] = await Promise.all([
-    supabase.from('reviews').select('id', { count: 'exact', head: true }),
-    supabase.rpc('avg_review_rating'), // you may not have this fn yet; fallback below
-    supabase
-      .from('reviews')
-      .select('id', { count: 'exact', head: true })
-      .eq('category', 'inappropriate'), // or whatever you end up storing for flagged
-  ]);
+  // 1. Total reviews per club (top 5 activity)
+  const { data: reviewActivity } = await supabase
+    .from('reviews')
+    .select('club_id, clubs(name)')
+    .limit(2000); // cheap-ish sample, we just summarize in JS
 
-  const totalReviews = totalCountRes.count ?? 0;
-  // if you haven't created avg_review_rating() yet, just compute a fallback:
-  const avgRating =
-    (avgRatingRes.data as number | null) ??
-    0; // feels nicer than undefined
+  const activityMap: Record<string, { name: string; count: number }> = {};
+  (reviewActivity ?? []).forEach((row: any) => {
+    const clubId = row.club_id ?? 'unknown';
+    const clubName = row.clubs?.name ?? 'Unknown Club';
+    if (!activityMap[clubId]) {
+      activityMap[clubId] = { name: clubName, count: 0 };
+    }
+    activityMap[clubId].count += 1;
+  });
 
-  const flaggedCount = flaggedCountRes.count ?? 0;
+  const topActivity = Object.values(activityMap)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
 
-  // ---- 2) Latest 5 reviews for "Latest Reviews" panel ----
-  const { data: latestRaw } = await supabase
+  // 2. Latest 5 real reviews (for "Recent Reviews" list)
+  const { data: latestReviews } = await supabase
     .from('reviews')
     .select(
       `
@@ -51,7 +49,6 @@ export default async function AdminDashboard() {
         category,
         inserted_at,
         clubs (
-          id,
           name
         )
       `
@@ -59,22 +56,14 @@ export default async function AdminDashboard() {
     .order('inserted_at', { ascending: false })
     .limit(5);
 
-  const latestRows: LatestRow[] = (latestRaw ?? []).map((r: any) => ({
-    id: r.id,
-    rating: r.rating ?? null,
-    comment: r.comment ?? null,
-    category: r.category ?? null,
-    inserted_at: r.inserted_at,
-    club_name: r.clubs?.name ?? null,
-  }));
+  // 3. Count flagged/inappropriate reviews (category = 'staff' for now)
+  const { count: flaggedCount } = await supabase
+    .from('reviews')
+    .select('id', { count: 'exact', head: true })
+    .eq('category', 'staff'); // this is our "flagged" stand-in for now
 
-  // ---- 3) Needs Attention (flagged) preview ----
-  // For the preview table, we'll reuse the client component <FlaggedTableClient/>
-  // It expects rows shaped like:
-  // { id, rating, comment, category, inserted_at, club_name }
-  //
-  // We'll just filter where category = 'inappropriate' (or whatever flag means).
-  const { data: flaggedRaw } = await supabase
+  // We'll also grab a preview list of flagged to show top 3 in the card
+  const { data: flaggedRows } = await supabase
     .from('reviews')
     .select(
       `
@@ -84,149 +73,200 @@ export default async function AdminDashboard() {
         category,
         inserted_at,
         clubs (
-          id,
           name
         )
       `
     )
-    .eq('category', 'inappropriate')
+    .eq('category', 'staff')
     .order('inserted_at', { ascending: false })
-    .limit(5);
+    .limit(3);
 
-  const flaggedRows = (flaggedRaw ?? []).map((r: any) => ({
+  // Shape data for rendering
+  const recentReviews = (latestReviews ?? []).map((r: any) => ({
     id: r.id,
-    rating: r.rating ?? null,
-    comment: r.comment ?? null,
+    club: r.clubs?.name ?? 'Unknown Club',
+    rating: r.rating,
+    comment: r.comment ?? '',
     category: r.category ?? null,
     inserted_at: r.inserted_at,
-    club_name: r.clubs?.name ?? null,
   }));
 
-  // ---- Render ----
+  const flaggedPreview: FlaggedRow[] = (flaggedRows ?? []).map((r: any) => ({
+    id: r.id,
+    rating: r.rating,
+    comment: r.comment ?? '',
+    category: r.category ?? null,
+    inserted_at: r.inserted_at,
+    club_name: r.clubs?.name ?? 'Unknown Club',
+  }));
+
   return (
-    <div className="space-y-8 p-6">
-      {/* Top stats row */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {/* Total Reviews */}
-        <div className="rounded-xl border border-gray-200 p-4 shadow-sm">
-          <p className="text-sm text-gray-500">Total Reviews</p>
-          <p className="mt-1 text-3xl font-semibold">{totalReviews}</p>
-          <p className="text-xs text-gray-400 mt-2">
-            All-time across all clubs
-          </p>
+    <div className="flex flex-col gap-8">
+      {/* HEADER BAR */}
+      <header className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold text-gray-900">
+          SoccerConnect • Admin
+        </h1>
+        <p className="text-sm text-gray-500">
+          Internal moderation dashboard
+        </p>
+      </header>
+
+      {/* METRIC CARDS GRID */}
+      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Top Clubs by Recent Activity */}
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm font-medium text-gray-700">
+              Most Active Clubs
+            </h2>
+            <span className="text-[11px] text-gray-400">last ~2k reviews</span>
+          </div>
+          <ul className="mt-3 space-y-2 text-sm text-gray-800">
+            {topActivity.length === 0 && (
+              <li className="text-gray-400 text-sm italic">
+                No recent activity
+              </li>
+            )}
+            {topActivity.map((row) => (
+              <li
+                key={row.name}
+                className="flex items-baseline justify-between"
+              >
+                <span className="font-medium">{row.name}</span>
+                <span className="text-gray-500">{row.count}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {/* Average Rating */}
-        <div className="rounded-xl border border-gray-200 p-4 shadow-sm">
-          <p className="text-sm text-gray-500">Average Rating</p>
-          <p className="mt-1 text-3xl font-semibold">
-            {Number(avgRating).toFixed(1)}
-            <span className="text-base text-gray-500"> /5</span>
-          </p>
-          <p className="text-xs text-gray-400 mt-2">
-            Overall satisfaction
-          </p>
-        </div>
-
-        {/* Needs Attention Count */}
-        <div className="rounded-xl border border-gray-200 p-4 shadow-sm">
-          <p className="text-sm text-gray-500">Needs Attention</p>
-          <p className="mt-1 text-3xl font-semibold">{flaggedCount}</p>
-          <p className="text-xs text-red-500 mt-2">
-            Marked inappropriate / review asap
-          </p>
-        </div>
-      </section>
-
-      {/* Two-column: Latest Reviews + Needs Attention */}
-      <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Latest Reviews panel */}
-        <div className="rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-start justify-between p-4 border-b border-gray-100">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                Latest Reviews
-              </h2>
-              <p className="text-xs text-gray-500">
-                Most recent feedback across all clubs
-              </p>
-            </div>
+        {/* Flagged / Needs Review */}
+        <div className="rounded-xl border border-rose-200 bg-white p-4 shadow-sm">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm font-medium text-gray-700">
+              Flagged Reviews
+            </h2>
             <Link
-              href="/protected/reviews"
-              className="text-xs font-medium text-blue-600 hover:underline"
+              href="/protected/flagged"
+              className="text-[11px] font-medium text-rose-600 hover:underline"
             >
               View all
             </Link>
           </div>
 
-          <div className="divide-y divide-gray-100">
-            {latestRows.length === 0 ? (
-              <div className="p-4 text-sm text-gray-500">
-                No recent reviews.
-              </div>
-            ) : (
-              latestRows.map((row) => (
-                <div key={row.id} className="p-4 text-sm">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <div className="font-medium text-gray-900">
-                      {row.club_name ?? 'Unknown Club'}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="rounded border border-gray-300 px-1.5 py-0.5 text-gray-600">
-                        {row.rating ?? '—'}/5
-                      </span>
-                      {row.category && (
-                        <span className="rounded border border-gray-300 px-1.5 py-0.5 text-gray-600">
-                          {row.category}
-                        </span>
-                      )}
-                      <span className="text-gray-400">
-                        {new Date(row.inserted_at).toLocaleString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                  {row.comment && (
-                    <p className="mt-2 text-gray-700 leading-snug line-clamp-4">
-                      {row.comment}
-                    </p>
-                  )}
-                </div>
-              ))
+          <p className="mt-2 text-3xl font-semibold text-rose-600 leading-none">
+            {flaggedCount ?? 0}
+          </p>
+          <p className="text-[11px] text-gray-500">
+            Marked as “Staff / Needs Attention”
+          </p>
+
+          <ul className="mt-4 space-y-3 max-h-32 overflow-y-auto pr-1">
+            {flaggedPreview.length === 0 && (
+              <li className="text-gray-400 text-sm italic">
+                Nothing flagged 🎉
+              </li>
             )}
-          </div>
+
+            {flaggedPreview.map((f) => (
+              <li
+                key={f.id}
+                className="rounded border border-gray-200 bg-gray-50 p-2 text-xs text-gray-700"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-medium">{f.club_name}</span>
+                  <span className="text-[10px] text-gray-400">
+                    {new Date(f.inserted_at).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                </div>
+                <div className="mt-1 line-clamp-2 text-[11px] text-gray-600">
+                  {f.comment || '—'}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {/* Needs Attention panel */}
-        <div className="rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-start justify-between p-4 border-b border-gray-100">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                Needs Attention
-              </h2>
-              <p className="text-xs text-gray-500">
-                Reviews flagged as inappropriate
-              </p>
-            </div>
+        {/* Recent Reviews (count only) */}
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm font-medium text-gray-700">
+              Recent Reviews
+            </h2>
             <Link
-              href="/protected/flagged"
-              className="text-xs font-medium text-blue-600 hover:underline"
+              href="/protected/reviews"
+              className="text-[11px] font-medium text-blue-600 hover:underline"
             >
-              Review all
+              View all
             </Link>
           </div>
 
-          {/* reuse the same row shape we mapped, but rendered using your client table */}
-          <div className="p-0">
-            <FlaggedTableClient initialRows={flaggedRows} />
-          </div>
+          <p className="mt-2 text-3xl font-semibold text-gray-900 leading-none">
+            {recentReviews.length}
+          </p>
+          <p className="text-[11px] text-gray-500">
+            Last 5 submitted
+          </p>
+
+          <ul className="mt-4 space-y-3 max-h-32 overflow-y-auto pr-1">
+            {recentReviews.length === 0 && (
+              <li className="text-gray-400 text-sm italic">
+                No recent reviews
+              </li>
+            )}
+
+            {recentReviews.map((r) => (
+              <li
+                key={r.id}
+                className="rounded border border-gray-200 bg-gray-50 p-2 text-xs text-gray-700"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-medium">{r.club}</span>
+                  <span className="text-[10px] text-gray-400">
+                    {new Date(r.inserted_at).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-600">
+                  <span className="font-semibold text-gray-800">
+                    {r.rating}/5
+                  </span>
+                  <span className="line-clamp-1">{r.comment || '—'}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
+
+      {/* FOOTNOTE / LINKS ROW */}
+      <footer className="text-[11px] text-gray-400">
+        <div className="flex flex-wrap items-center gap-4">
+          <Link
+            href="/protected/reviews"
+            className="text-blue-600 hover:underline"
+          >
+            Full Reviews
+          </Link>
+          <Link
+            href="/protected/flagged"
+            className="text-rose-600 hover:underline"
+          >
+            Flagged Reviews
+          </Link>
+          <Link
+            href="/protected/reports"
+            className="text-gray-500 hover:underline"
+          >
+            Reports (coming soon)
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 }

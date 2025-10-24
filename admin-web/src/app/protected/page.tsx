@@ -4,78 +4,128 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-type Club = { id: string; name: string };
-type Row = {
+type ReviewRow = {
   id: string;
   rating: number | null;
   comment: string | null;
   category: 'parent' | 'player' | 'staff' | null;
   inserted_at: string;
-  club: Club | null; // normalized single club
+  clubs: {
+    id: string;
+    name: string;
+  }[];
 };
 
-export default async function AdminHome() {
+export default async function AdminDashboardPage() {
   const supabase = await createSupabaseServer();
 
-  // NOTE: reviews.club_id -> public.clubs.id (one-to-one). Some setups still
-  // return an array for the embedded relation. We normalize below.
+  // grab latest 20 reviews w/ club name
   const { data, error } = await supabase
     .from('reviews')
-    .select('id,rating,comment,category,inserted_at,clubs(id,name)')
+    .select(
+      `
+        id,
+        rating,
+        comment,
+        category,
+        inserted_at,
+        clubs (
+          id,
+          name
+        )
+      `
+    )
     .order('inserted_at', { ascending: false })
     .limit(20);
 
   if (error) {
     return (
-      <main className="p-6">
-        <h1 className="text-2xl font-bold">Admin dashboard</h1>
-        <p className="text-red-600 mt-2">Error: {error.message}</p>
-      </main>
+      <section className="space-y-2">
+        <h1 className="text-xl font-semibold text-gray-900">
+          Latest Reviews
+        </h1>
+        <p className="text-red-600 text-sm">
+          Error loading reviews: {error.message}
+        </p>
+      </section>
     );
   }
 
-  // Normalize: if `clubs` is an array, take first item; if it's an object, use it;
-  // otherwise set null. Also coerce primitives to the Row shape.
-  const rows: Row[] = (data ?? []).map((r: any) => {
-    const c = r?.clubs;
-    const club: Club | null = Array.isArray(c)
-      ? (c[0] ? { id: String(c[0].id), name: String(c[0].name) } : null)
-      : c
-      ? { id: String(c.id), name: String(c.name) }
-      : null;
-
-    return {
-      id: String(r.id),
-      rating: r.rating ?? null,
-      comment: r.comment ?? null,
-      category: (r.category ?? null) as Row['category'],
-      inserted_at: String(r.inserted_at),
-      club,
-    };
-  });
+  // normalize to safe shape
+  const rows: ReviewRow[] = (data ?? []).map((r: any) => ({
+    id: String(r.id),
+    rating: r.rating ?? null,
+    comment: r.comment ?? null,
+    category: r.category ?? null,
+    inserted_at: r.inserted_at ?? '',
+    clubs: Array.isArray(r.clubs)
+      ? r.clubs.map((c: any) => ({
+          id: String(c.id),
+          name: String(c.name ?? 'Unknown club'),
+        }))
+      : [],
+  }));
 
   return (
-    <main className="p-6 space-y-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Admin dashboard</h1>
+    <section className="space-y-4">
+      <header>
+        <h1 className="text-xl font-semibold text-gray-900">
+          Latest Reviews
+        </h1>
+        <p className="text-xs text-gray-500">
+          Read-only snapshot of the 20 most recent reviews across clubs.
+        </p>
       </header>
 
-      <ul className="space-y-3">
-        {rows.map((row) => (
-          <li key={row.id} className="rounded border p-4">
-            <div className="flex items-center justify-between">
-              <strong>{row.club?.name ?? 'Unknown club'}</strong>
-              <span className="text-sm text-gray-500">
-                {new Date(row.inserted_at).toLocaleString()}
-              </span>
-            </div>
-            <div className="mt-1 text-sm text-gray-600">
-              Rating: {row.rating ?? '—'} • Category: {row.category ?? '—'}
-            </div>
-            {row.comment && <p className="mt-2">{row.comment}</p>}
+      <ul className="divide-y divide-gray-200 rounded border border-gray-200 bg-white">
+        {rows.length === 0 ? (
+          <li className="p-4 text-sm text-gray-500">
+            No reviews yet.
           </li>
-        ))}
+        ) : (
+          rows.map((row) => (
+            <li key={row.id} className="p-4 text-sm">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div className="font-medium text-gray-900">
+                  {row.clubs[0]?.name ?? 'Unknown Club'}
+                </div>
+
+                <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                  {/* rating */}
+                  <span className="rounded bg-gray-100 px-1.5 py-0.5 font-medium text-gray-700">
+                    {row.rating ?? '—'}/5
+                  </span>
+
+                  {/* category badge */}
+                  {row.category && (
+                    <span className="rounded bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700 capitalize">
+                      {row.category}
+                    </span>
+                  )}
+
+                  {/* timestamp */}
+                  <span>
+                    {new Date(row.inserted_at).toLocaleString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              </div>
+
+              {/* comment */}
+              {row.comment && (
+                <p className="mt-2 whitespace-pre-line text-gray-700">
+                  {row.comment}
+                </p>
+              )}
+            </li>
+          ))
+        )}
       </ul>
-    </main>
+    </section>
   );
 }

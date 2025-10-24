@@ -1,171 +1,115 @@
 // admin-web/src/app/protected/page.tsx
-import { createSupabaseServer } from '@/lib/supabaseServer';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-type ReviewRow = {
-  id: string;
-  rating: number | null;
-  comment: string | null;
-  category: 'parent' | 'player' | 'staff' | null;
-  inserted_at: string;
-  clubs: {
-    id: string;
-    name: string;
-  }[];
+type ClubRow = {
+  club_name: string | null;
+  total_reviews: number;
 };
 
-function fmtDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
+export default async function AdminHome() {
+  // create Supabase server client using cookies from this request
+  const cookieStore = await cookies();
 
-export default async function AdminDashboardPage() {
-  const supabase = await createSupabaseServer();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set() {
+          /* no-op for RSC */
+        },
+        remove() {
+          /* no-op for RSC */
+        },
+      },
+    }
+  );
 
-  // who is logged in?
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // their admin row
-  const { data: adminRow } = await supabase
-    .from('admin_users')
-    .select('role')
-    .eq('id', user?.id ?? '__nope__')
-    .maybeSingle();
-
-  // fetch recent reviews
+  // get some data you want to show on dashboard
+  // example: count reviews per club
+  // (this is what you had working visually)
   const { data, error } = await supabase
     .from('reviews')
-    .select(
-      `
-        id,
-        rating,
-        comment,
-        category,
-        inserted_at,
-        clubs (
-          id,
-          name
-        )
-      `
-    )
+    .select('clubs(name), club_id')
     .order('inserted_at', { ascending: false })
-    .limit(20);
+    .limit(100);
 
-  const rows: ReviewRow[] = (data ?? []).map((r: any) => ({
-    id: String(r.id),
-    rating: r.rating ?? null,
-    comment: r.comment ?? null,
-    category: r.category ?? null,
-    inserted_at: r.inserted_at ?? '',
-    clubs: Array.isArray(r.clubs)
-      ? r.clubs.map((c: any) => ({
-          id: String(c.id),
-          name: String(c.name ?? 'Unknown Club'),
-        }))
-      : [],
-  }));
+  // collapse into counts per club_id
+  const countsByClub: Record<
+    string,
+    { club_name: string | null; total_reviews: number }
+  > = {};
+
+  if (data) {
+    for (const row of data as any[]) {
+      const clubId = row.club_id ?? 'unknown';
+      if (!countsByClub[clubId]) {
+        countsByClub[clubId] = {
+          club_name: row.clubs?.name ?? 'Unknown Club',
+          total_reviews: 0,
+        };
+      }
+      countsByClub[clubId].total_reviews += 1;
+    }
+  }
+
+  const clubs: ClubRow[] = Object.values(countsByClub);
 
   return (
-    <div className="space-y-6">
-      {/* Page header */}
-      <section className="space-y-2">
-        <h1 className="text-xl font-semibold text-gray-900">
-          SoccerConnect • Admin
-        </h1>
-        <p className="text-xs text-gray-500">
-          Internal moderation dashboard
-        </p>
-
-        <div className="mt-2 text-[11px] text-gray-500 leading-4">
-          <div>Signed in as: {user?.email ?? 'unknown'}</div>
-          <div>Role: {adminRow?.role ?? '—'}</div>
-        </div>
-
-        {/* inline nav */}
-        <nav className="flex flex-wrap gap-3 text-xs font-medium text-blue-600 mt-3">
-          <a
-            href="/protected/reviews"
-            className="underline underline-offset-2 hover:text-blue-500"
-          >
-            Reviews
-          </a>
-          <a
-            href="/protected/reports"
-            className="underline underline-offset-2 hover:text-blue-500"
-          >
-            Reports
-          </a>
-        </nav>
-      </section>
-
-      {/* Latest Reviews */}
-      <section className="space-y-3">
+    <main className="p-6">
+      {/* HEADER BAR */}
+      <header className="flex items-start justify-between mb-8">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">
-            Latest Reviews
-          </h2>
-          <p className="text-[11px] text-gray-500">
-            Most recent activity across all clubs.
+          <h1 className="text-3xl font-semibold text-gray-900">
+            SoccerConnect • Admin
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Internal dashboard
           </p>
-          {error && (
-            <p className="text-red-600 text-xs mt-2">
-              Error loading reviews: {error.message}
-            </p>
-          )}
         </div>
 
-        <ul className="divide-y divide-gray-200 rounded border border-gray-200 bg-white">
-          {rows.length === 0 ? (
-            <li className="p-4 text-sm text-gray-500">
-              No reviews yet.
+        {/* Sign out */}
+        <form
+          action="/auth/signout"
+          method="post"
+          className="self-start"
+        >
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-md bg-red-600 text-white text-sm font-medium px-4 py-2 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          >
+            Sign out
+          </button>
+        </form>
+      </header>
+
+      {/* BODY CONTENT */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold text-gray-900">
+          Clubs by review count
+        </h2>
+
+        {error && (
+          <p className="text-red-600 text-sm">
+            Failed to load data: {error.message}
+          </p>
+        )}
+
+        <ul className="text-lg text-gray-900 leading-relaxed space-y-3">
+          {clubs.map((c, i) => (
+            <li key={i} className="font-medium">
+              {c.club_name ?? 'Unknown Club'} — {c.total_reviews}
             </li>
-          ) : (
-            rows.map((row) => (
-              <li key={row.id} className="p-4 text-sm">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  {/* club name */}
-                  <div className="font-medium text-gray-900">
-                    {row.clubs[0]?.name ?? 'Unknown Club'}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
-                    {/* rating */}
-                    <span className="rounded bg-gray-100 px-1.5 py-0.5 font-medium text-gray-700">
-                      {row.rating ?? '—'}/5
-                    </span>
-
-                    {/* category */}
-                    {row.category && (
-                      <span className="rounded bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700 capitalize">
-                        {row.category}
-                      </span>
-                    )}
-
-                    {/* timestamp */}
-                    <span>{fmtDate(row.inserted_at)}</span>
-                  </div>
-                </div>
-
-                {row.comment && (
-                  <p className="mt-2 whitespace-pre-line text-gray-700">
-                    {row.comment}
-                  </p>
-                )}
-              </li>
-            ))
-          )}
+          ))}
         </ul>
       </section>
-    </div>
+    </main>
   );
 }

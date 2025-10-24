@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
  * Server-side Supabase client for RSC/route handlers.
  * Next 16: cookies() is async, so this function is async now.
  */
-export async function createSupabaseServer() {
+export async function createSupabaseServer(p0: unknown) {
   const cookieStore = await cookies(); // <- MUST await in Next 16
 
   return createServerClient(

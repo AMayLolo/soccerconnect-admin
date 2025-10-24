@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 
 // browser-side supabase client
 function getBrowserClient() {

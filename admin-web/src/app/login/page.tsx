@@ -4,15 +4,14 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-// helper to read current session — if already signed in, skip login page
-async function getSessionUser() {
+async function getSessionAndRole() {
+  // read incoming request cookies
   const cookieStore = await cookies();
-  // temporary response stub just so createServerClient is happy
+
+  // we create a faux response so createServerClient doesn't explode
   const fakeRes = {
     cookies: {
-      get() {
-        return undefined;
-      },
+      get() {},
       set() {},
       remove() {},
     },
@@ -32,11 +31,26 @@ async function getSessionUser() {
     }
   );
 
+  // get authed user
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  return user;
+  if (!user) {
+    return { user: null, isAdmin: false, role: null };
+  }
+
+  // check if they're in admin_users
+  const { data: adminRow } = await supabase
+    .from('admin_users')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const isAdmin = !!adminRow;
+  const role = adminRow?.role ?? null;
+
+  return { user, isAdmin, role };
 }
 
 export const dynamic = 'force-dynamic';
@@ -47,13 +61,15 @@ export default async function LoginPage({
 }: {
   searchParams?: { error?: string };
 }) {
-  // if you're already logged in, don't show login again
-  const user = await getSessionUser();
-  if (user) {
+  const { user, isAdmin, role } = await getSessionAndRole();
+
+  // If you're logged in AND you are an admin, don't even show login.
+  if (user && isAdmin) {
     redirect('/protected');
   }
 
-  const errorMsg = searchParams?.error ?? null;
+  const loginError = searchParams?.error ?? null;
+  const notAdmin = user && !isAdmin;
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
@@ -66,20 +82,23 @@ export default async function LoginPage({
             Sign in with your admin credentials.
           </p>
 
-          {errorMsg && (
-            <div className="mb-4 rounded bg-red-50 text-red-700 text-sm p-2 border border-red-200">
-              {errorMsg}
+          {/* Case: logged in but NOT an admin */}
+          {notAdmin && (
+            <div className="mb-4 rounded bg-yellow-50 text-yellow-800 text-sm p-2 border border-yellow-200">
+              You’re signed in as <strong>{user?.email}</strong>, but you’re not
+              authorized as an admin for this dashboard.
             </div>
           )}
 
-          {/* This is the magic:
-             We POST directly to /auth/login, which sets cookies and redirects.
-          */}
-          <form
-            method="POST"
-            action="/auth/login"
-            className="space-y-4"
-          >
+          {/* Case: bad password, etc */}
+          {loginError && (
+            <div className="mb-4 rounded bg-red-50 text-red-700 text-sm p-2 border border-red-200">
+              {loginError}
+            </div>
+          )}
+
+          {/* If you're not admin, we still show the form so you can try a different account */}
+          <form method="POST" action="/auth/login" className="space-y-4">
             <div>
               <label
                 htmlFor="email"

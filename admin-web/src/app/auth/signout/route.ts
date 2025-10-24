@@ -1,27 +1,43 @@
 // admin-web/src/app/auth/signout/route.ts
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-// tiny helper to make a server-side supabase client
-function getServerClient() {
-  return createClient(
+function getSupabaseServer(req: NextRequest, res: NextResponse) {
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return req.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          res.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          res.cookies.set({ name, value: '', ...options });
+        },
+      },
+    }
   );
 }
 
-// handle GET /auth/signout
-export async function GET() {
-  const supabase = getServerClient();
+// We’ll support GET so that a plain <a href="/auth/signout"> works.
+export async function GET(req: NextRequest) {
+  // Start building a redirect response right away
+  const res = NextResponse.redirect(new URL('/login', req.url));
 
-  // ignore any error here, we just want them logged out
+  // attach supabase to this response so it can mutate cookies
+  const supabase = getSupabaseServer(req, res);
+
+  // Sign out (this clears the auth cookies in `res`)
   await supabase.auth.signOut();
 
-  // send them back to login
-  return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_SITE_URL || 'https://admin.soccerconnectusa.com'));
+  // Send them to /login with cleared session
+  return res;
 }
 
-// handle POST too (just in case something still tries to POST)
-export async function POST() {
-  return GET();
+// Also allow POST just in case we later switch to a <form method="POST">
+export async function POST(req: NextRequest) {
+  return GET(req);
 }

@@ -1,67 +1,30 @@
 // admin-web/src/app/protected/reviews/page.tsx
-import { createSupabaseServer } from '@/lib/supabaseServer';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// This page shows ALL reviews in a simple table.
-// You can make this fancier later (search, filters, moderation actions).
+async function fetchAllReviews() {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set({ name, value, ...options });
+        },
+        remove(name: string, options: any) {
+          cookieStore.set({ name, value: '', ...options });
+        },
+      },
+    }
+  );
 
-type ReviewRow = {
-  id: string;
-  rating: number | null;
-  comment: string | null;
-  category: 'parent' | 'player' | 'staff' | null;
-  inserted_at: string;
-  clubs: {
-    id: string;
-    name: string;
-  }[];
-  user_id: string | null;
-};
-
-export default async function AllReviewsPage() {
-  // 1. Get server-side supabase with cookies/session
-  const supabase = await createSupabaseServer();
-
-  // 2. Confirm user is logged in + is admin
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    // Not logged in → show minimal fallback.
-    // (layout.tsx in /protected should already be redirecting,
-    // but this is extra safety for when layout is bypassed during build)
-    return (
-      <main className="p-6 text-sm text-gray-700">
-        <h1 className="text-lg font-semibold text-gray-900">Reviews</h1>
-        <p className="text-red-600 mt-2">
-          You must be signed in to view this page.
-        </p>
-      </main>
-    );
-  }
-
-  // 3. (Optional) enforce admin role
-  const { data: adminRow } = await supabase
-    .from('admin_users')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (!adminRow) {
-    return (
-      <main className="p-6 text-sm text-gray-700">
-        <h1 className="text-lg font-semibold text-gray-900">Reviews</h1>
-        <p className="text-red-600 mt-2">
-          Your account is not authorized for admin access.
-        </p>
-      </main>
-    );
-  }
-
-  // 4. Pull recent reviews with club + user_id
   const { data, error } = await supabase
     .from('reviews')
     .select(
@@ -71,7 +34,6 @@ export default async function AllReviewsPage() {
         comment,
         category,
         inserted_at,
-        user_id,
         clubs (
           id,
           name
@@ -79,131 +41,92 @@ export default async function AllReviewsPage() {
       `
     )
     .order('inserted_at', { ascending: false })
-    .limit(100);
+    .limit(50); // you can page later
 
-  if (error) {
-    return (
-      <main className="p-6 text-sm text-gray-700">
-        <h1 className="text-lg font-semibold text-gray-900">Reviews</h1>
-        <p className="text-red-600 mt-2">
-          Error loading reviews: {error.message}
-        </p>
-      </main>
-    );
-  }
+  if (error) return { rows: [], error: error.message };
 
-  const rows: ReviewRow[] = (data ?? []).map((r: any) => ({
-    id: String(r.id),
-    rating: r.rating ?? null,
-    comment: r.comment ?? null,
-    category: r.category ?? null,
-    inserted_at: r.inserted_at ?? '',
-    user_id: r.user_id ?? null,
-    clubs: Array.isArray(r.clubs)
-      ? r.clubs.map((c: any) => ({
-          id: String(c.id),
-          name: String(c.name ?? 'Unknown club'),
-        }))
-      : [],
-  }));
+  const rows =
+    (data ?? []).map((r: any) => ({
+      id: r.id as string,
+      rating: r.rating ?? null,
+      comment: r.comment ?? '',
+      category: r.category ?? null,
+      inserted_at: r.inserted_at ?? null,
+      club_name: r.clubs?.[0]?.name ?? r.clubs?.name ?? 'Unknown club',
+    })) ?? [];
+
+  return { rows, error: null };
+}
+
+export default async function ReviewsPage() {
+  const { rows, error } = await fetchAllReviews();
 
   return (
-    <main className="p-6 space-y-6">
-      {/* Top bar / header */}
-      <header className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">
-            Reviews
-          </h1>
-          <p className="text-xs text-gray-500">
-            Most recent 100 reviews across all clubs.
-          </p>
-        </div>
-
-        {/* little nav back to dashboard */}
-        <a
-          href="/protected"
-          className="text-xs font-medium text-blue-600 hover:text-blue-500 underline underline-offset-2"
-        >
-          ← Back to dashboard
-        </a>
+    <div className="space-y-6">
+      <header className="space-y-1">
+        <h1 className="text-xl font-semibold text-gray-900">
+          Reviews
+        </h1>
+        <p className="text-sm text-gray-500">
+          All recent reviews (most recent first).
+        </p>
       </header>
 
-      {/* Table-ish list */}
-      <div className="overflow-x-auto rounded border border-gray-200 bg-white">
-        <table className="min-w-full text-left text-xs text-gray-700">
-          <thead className="bg-gray-50 text-[11px] uppercase text-gray-500">
-            <tr>
-              <th className="px-3 py-2 font-semibold">Club</th>
-              <th className="px-3 py-2 font-semibold">Rating</th>
-              <th className="px-3 py-2 font-semibold">Category</th>
-              <th className="px-3 py-2 font-semibold">Comment</th>
-              <th className="px-3 py-2 font-semibold whitespace-nowrap">User</th>
-              <th className="px-3 py-2 font-semibold whitespace-nowrap">When</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {rows.length === 0 ? (
+      <section className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm bg-white">
+        {error ? (
+          <div className="p-4 text-sm text-red-600">
+            Error loading reviews: {error}
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="p-4 text-sm text-gray-500">
+            No reviews found.
+          </div>
+        ) : (
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
               <tr>
-                <td
-                  colSpan={6}
-                  className="px-3 py-4 text-center text-gray-400"
-                >
-                  No reviews yet.
-                </td>
+                <th className="px-4 py-2">Club</th>
+                <th className="px-4 py-2">Rating</th>
+                <th className="px-4 py-2">Category</th>
+                <th className="px-4 py-2">Comment</th>
+                <th className="px-4 py-2 whitespace-nowrap">Submitted</th>
               </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="align-top">
-                  <td className="px-3 py-3 font-medium text-gray-900">
-                    {row.clubs[0]?.name ?? 'Unknown Club'}
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {rows.map((rev) => (
+                <tr key={rev.id} className="align-top">
+                  <td className="px-4 py-2 font-medium text-gray-900">
+                    {rev.club_name}
                   </td>
-
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    <span className="rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-800">
-                      {row.rating ?? '—'}/5
-                    </span>
+                  <td className="px-4 py-2 text-gray-700">
+                    {rev.rating != null ? `${rev.rating}/5` : '—'}
                   </td>
-
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    {row.category ? (
-                      <span className="rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800 capitalize">
-                        {row.category}
+                  <td className="px-4 py-2">
+                    {rev.category ? (
+                      <span className="inline-block rounded border border-blue-200 bg-blue-50 text-blue-600 text-xs px-1.5 py-0.5">
+                        {rev.category}
                       </span>
                     ) : (
-                      <span className="text-gray-400">—</span>
+                      <span className="text-gray-400 text-xs">—</span>
                     )}
                   </td>
-
-                  <td className="px-3 py-3 max-w-xs">
-                    {row.comment ? (
-                      <div className="text-gray-800 whitespace-pre-line break-words">
-                        {row.comment}
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">No comment</span>
-                    )}
+                  <td className="px-4 py-2 text-gray-800 whitespace-pre-wrap break-words max-w-[28rem]">
+                    {rev.comment || <span className="text-gray-400">No comment</span>}
                   </td>
-
-                  <td className="px-3 py-3 text-gray-500 text-[11px] whitespace-nowrap">
-                    {row.user_id ?? 'Anon'}
-                  </td>
-
-                  <td className="px-3 py-3 text-gray-500 text-[11px] whitespace-nowrap">
-                    {new Date(row.inserted_at).toLocaleString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })}
+                  <td className="px-4 py-2 text-gray-500 text-xs whitespace-nowrap">
+                    {rev.inserted_at
+                      ? new Date(rev.inserted_at).toLocaleString('en-US', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })
+                      : '—'}
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </main>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+    </div>
   );
 }

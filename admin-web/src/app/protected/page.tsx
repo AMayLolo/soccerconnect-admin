@@ -1,19 +1,13 @@
 // admin-web/src/app/protected/page.tsx
-import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-type ClubRow = {
-  club_name: string | null;
-  total_reviews: number;
-};
-
-export default async function AdminHome() {
-  // create Supabase server client using cookies from this request
+async function fetchLatest() {
   const cookieStore = await cookies();
-
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -22,94 +16,138 @@ export default async function AdminHome() {
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
-        set() {
-          /* no-op for RSC */
+        set(name: string, value: string, options: any) {
+          cookieStore.set({ name, value, ...options });
         },
-        remove() {
-          /* no-op for RSC */
+        remove(name: string, options: any) {
+          cookieStore.set({ name, value: '', ...options });
         },
       },
     }
   );
 
-  // get some data you want to show on dashboard
-  // example: count reviews per club
-  // (this is what you had working visually)
   const { data, error } = await supabase
     .from('reviews')
-    .select('clubs(name), club_id')
+    .select(
+      `
+        id,
+        rating,
+        comment,
+        category,
+        inserted_at,
+        clubs (
+          id,
+          name
+        )
+      `
+    )
     .order('inserted_at', { ascending: false })
-    .limit(100);
+    .limit(5);
 
-  // collapse into counts per club_id
-  const countsByClub: Record<
-    string,
-    { club_name: string | null; total_reviews: number }
-  > = {};
+  if (error) return { rows: [], error: error.message };
 
-  if (data) {
-    for (const row of data as any[]) {
-      const clubId = row.club_id ?? 'unknown';
-      if (!countsByClub[clubId]) {
-        countsByClub[clubId] = {
-          club_name: row.clubs?.name ?? 'Unknown Club',
-          total_reviews: 0,
-        };
-      }
-      countsByClub[clubId].total_reviews += 1;
-    }
-  }
+  // normalize rows for display
+  const rows =
+    (data ?? []).map((r: any) => ({
+      id: r.id as string,
+      rating: r.rating ?? null,
+      comment: r.comment ?? '',
+      category: r.category ?? null,
+      inserted_at: r.inserted_at ?? null,
+      club_name: r.clubs?.[0]?.name ?? r.clubs?.name ?? 'Unknown club',
+    })) ?? [];
 
-  const clubs: ClubRow[] = Object.values(countsByClub);
+  return { rows, error: null };
+}
+
+export default async function DashboardPage() {
+  const { rows, error } = await fetchLatest();
 
   return (
-    <main className="p-6">
-      {/* HEADER BAR */}
-      <header className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-semibold text-gray-900">
-            SoccerConnect • Admin
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Internal dashboard
-          </p>
+    <div className="space-y-8">
+      {/* Page header */}
+      <section className="space-y-1">
+        <h1 className="text-xl font-semibold text-gray-900">
+          Dashboard
+        </h1>
+        <p className="text-sm text-gray-500">
+          Most recent activity across all clubs.
+        </p>
+      </section>
+
+      {/* Latest Reviews card */}
+      <section className="border border-gray-200 rounded-lg shadow-sm overflow-hidden bg-white">
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+          <div>
+            <h2 className="text-base font-medium text-gray-900">
+              Latest Reviews
+            </h2>
+            <p className="text-xs text-gray-500">
+              Last 5 submissions (newest first)
+            </p>
+          </div>
+
+          <Link
+            href="/protected/reviews"
+            className="text-xs font-medium text-blue-600 hover:text-blue-700"
+          >
+            View all →
+          </Link>
         </div>
 
-        {/* Sign out */}
-        <form
-          action="/auth/signout"
-          method="post"
-          className="self-start"
-        >
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-md bg-red-600 text-white text-sm font-medium px-4 py-2 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-          >
-            Sign out
-          </button>
-        </form>
-      </header>
+        {error ? (
+          <div className="p-4 text-sm text-red-600">
+            Error loading reviews: {error}
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="p-4 text-sm text-gray-500">
+            No recent reviews.
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-200 text-sm">
+            {rows.map((rev) => (
+              <li key={rev.id} className="p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="font-medium text-gray-900">
+                    {rev.club_name}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    {rev.rating != null && (
+                      <span className="rounded border border-gray-300 px-1.5 py-0.5">
+                        {rev.rating}/5
+                      </span>
+                    )}
 
-      {/* BODY CONTENT */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold text-gray-900">
-          Clubs by review count
-        </h2>
+                    {rev.category && (
+                      <span className="rounded border border-blue-200 bg-blue-50 text-blue-600 px-1.5 py-0.5">
+                        {rev.category}
+                      </span>
+                    )}
 
-        {error && (
-          <p className="text-red-600 text-sm">
-            Failed to load data: {error.message}
-          </p>
+                    {rev.inserted_at && (
+                      <span>
+                        {new Date(rev.inserted_at).toLocaleString(
+                          'en-US',
+                          {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          }
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {rev.comment && (
+                  <p className="mt-2 text-gray-800 leading-relaxed break-words whitespace-pre-wrap">
+                    {rev.comment}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
-
-        <ul className="text-lg text-gray-900 leading-relaxed space-y-3">
-          {clubs.map((c, i) => (
-            <li key={i} className="font-medium">
-              {c.club_name ?? 'Unknown Club'} — {c.total_reviews}
-            </li>
-          ))}
-        </ul>
       </section>
-    </main>
+    </div>
   );
 }

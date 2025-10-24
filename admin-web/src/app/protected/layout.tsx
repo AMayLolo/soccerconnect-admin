@@ -1,20 +1,30 @@
-import React from 'react';
-import Link from 'next/link';
+// admin-web/src/app/protected/layout.tsx
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { createSupabaseServer } from '@/lib/supabaseServer';
-import SidebarNav from './SidebarNav';
-import MobileSidebar from './MobileSidebar';
+import { createServerClient } from '@supabase/ssr';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function ProtectedLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  // auth guard
-  const supabase = await createSupabaseServer();
+async function getSessionAndAdmin() {
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set() {},
+        remove() {},
+      },
+    }
+  );
+
+  // who is logged in?
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -23,6 +33,7 @@ export default async function ProtectedLayout({
     redirect('/login');
   }
 
+  // confirm admin
   const { data: adminRow } = await supabase
     .from('admin_users')
     .select('role')
@@ -33,95 +44,97 @@ export default async function ProtectedLayout({
     redirect('/login?e=not_admin');
   }
 
-  const userEmail = user.email ?? user.id;
-  const userRole = adminRow.role ?? '—';
+  return {
+    email: user.email ?? '',
+    role: adminRow.role ?? 'admin',
+  };
+}
+
+export default async function ProtectedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { email, role } = await getSessionAndAdmin();
 
   return (
-    <html lang="en">
-      <body className="bg-gray-50 text-gray-900 antialiased">
-        <div className="min-h-screen flex">
-
-          {/* DESKTOP SIDEBAR */}
-          <aside className="hidden md:flex md:w-64 flex-col border-r border-gray-200 bg-white">
-            <div className="px-6 py-5 border-b border-gray-200">
-              <div className="flex items-start gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-green-600 text-white font-semibold">
-                  SC
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-semibold text-gray-900 leading-tight">
-                    SoccerConnect
-                  </span>
-                  <span className="text-xs text-gray-500 leading-tight">
-                    Admin console
-                  </span>
-                </div>
-              </div>
-
-              <p className="mt-3 text-[11px] text-gray-500 leading-snug">
-                <span className="text-gray-700 font-medium break-all">
-                  {userEmail}
-                </span>
-                <br />
-                Role:{' '}
-                <span className="font-medium text-gray-700">{userRole}</span>
-              </p>
+    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
+      {/* top nav bar */}
+      <header className="border-b bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          {/* left chunk: brand / title */}
+          <div className="flex flex-col">
+            <div className="text-sm font-semibold text-gray-900">
+              SoccerConnect • Admin
             </div>
-
-            <SidebarNav />
-
-            <div className="px-3 py-4 border-t border-gray-200 text-xs text-gray-400">
-              © {new Date().getFullYear()} SoccerConnect
+            <div className="text-xs text-gray-500">
+              Internal moderation dashboard
             </div>
-          </aside>
+          </div>
 
-          {/* MAIN COLUMN */}
-          <div className="flex-1 flex flex-col min-w-0">
-
-            {/* TOP BAR */}
-            <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 md:px-6">
-              {/* LEFT SIDE OF HEADER */}
-              <div className="flex items-center gap-3">
-                {/* Mobile hamburger / drawer trigger */}
-                <MobileSidebar userEmail={userEmail} role={userRole} />
-
-                {/* Title block */}
-                <div className="flex flex-col">
-                  <div className="text-sm font-semibold text-gray-900">
-                    SoccerConnect • Admin
-                  </div>
-                  <div className="text-[11px] text-gray-500 leading-tight">
-                    Internal moderation dashboard
-                  </div>
-                </div>
-              </div>
-
-              {/* RIGHT SIDE OF HEADER */}
-              {/* Desktop-only sign out (mobile uses drawer sign out button) */}
-              <div className="hidden md:flex items-center gap-4">
-                <div className="text-right leading-tight">
-                  <div className="text-xs font-medium text-gray-900 break-all max-w-[180px]">
-                    {userEmail}
-                  </div>
-                  <div className="text-[11px] text-gray-500">{userRole}</div>
-                </div>
-
-                <form action="/auth/signout" method="post">
-                  <button
-                    type="submit"
-                    className="text-sm font-medium text-red-600 hover:text-red-700"
-                  >
-                    Sign out
-                  </button>
-                </form>
-              </div>
-            </header>
-
-            {/* PAGE CONTENT */}
-            <main className="flex-1 min-w-0 p-4 md:p-6">{children}</main>
+          {/* right chunk: user info + sign out */}
+          <div className="flex flex-col text-right">
+            <div className="text-sm text-gray-900">{email}</div>
+            <div className="text-xs text-gray-500">{role}</div>
+            <Link
+              href="/auth/signout"
+              className="text-xs text-red-600 font-semibold hover:text-red-700"
+            >
+              Sign out
+            </Link>
           </div>
         </div>
-      </body>
-    </html>
+      </header>
+
+      {/* body: sidebar + page content */}
+      <div className="flex flex-1">
+        {/* sidebar */}
+        <aside className="w-64 shrink-0 border-r bg-white">
+          <div className="px-6 py-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-green-600 text-white font-semibold">
+                SC
+              </div>
+              <div className="text-sm">
+                <div className="font-semibold text-gray-900">
+                  SoccerConnect
+                </div>
+                <div className="text-xs text-gray-500">
+                  Admin console
+                </div>
+                <div className="mt-2 text-xs text-gray-700">{email}</div>
+                <div className="text-xs text-gray-500">
+                  Role: {role}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <nav className="px-4 py-4 space-y-1 text-sm text-gray-700">
+            <NavItem label="Dashboard" href="/protected" />
+            <NavItem label="Reviews" href="/protected/reviews" />
+            <NavItem label="Flagged" href="/protected/flagged" />
+            <NavItem label="Reports" href="/protected/reports" />
+          </nav>
+        </aside>
+
+        {/* main content */}
+        <main className="flex-1 bg-gray-50 px-6 py-8">
+          <div className="mx-auto max-w-5xl">{children}</div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+// tiny helper component so we don't repeat styles
+function NavItem({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="block rounded-md px-3 py-2 text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+    >
+      {label}
+    </Link>
   );
 }

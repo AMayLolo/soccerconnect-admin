@@ -1,40 +1,29 @@
 // admin-web/src/app/protected/flagged/page.tsx
-import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
-import FlaggedTableClient, { FlaggedRow } from './FlaggedTableClient';
+import { getSupabaseServerReadOnly } from '@/lib/supabaseServerReadOnly';
+import FlaggedTableClient from './FlaggedTableClient';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-async function loadFlagged() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-      },
-    }
-  );
+export default async function FlaggedPage() {
+  const supabase = await getSupabaseServerReadOnly();
 
-  // grab unresolved reports with review + club context
-  const { data } = await supabase
+  // unresolved reports joined to review + club
+  const { data, error } = await supabase
     .from('review_reports')
     .select(
       `
         id,
-        created_at,
+        review_id,
         reason,
+        created_at,
         resolved,
         reviews (
-          id,
           rating,
           comment,
+          category,
+          inserted_at,
           clubs (
-            id,
             name
           )
         )
@@ -42,32 +31,59 @@ async function loadFlagged() {
     )
     .eq('resolved', false)
     .order('created_at', { ascending: false })
-    .limit(100);
+    .limit(50);
 
-  const rows: FlaggedRow[] = (data || []).map((row: any) => ({
-    report_id: row.id,
-    created_at: row.created_at,
-    reason: row.reason,
-    review_id: row.reviews?.id,
-    review_comment: row.reviews?.comment ?? null,
-    review_rating: row.reviews?.rating ?? null,
-    club_name: row.reviews?.clubs?.name ?? 'Unknown club',
-  }));
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <header>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            Flagged
+          </h1>
+          <p className="mt-1 text-gray-500 text-lg">
+            Reviews that were reported as inappropriate.
+          </p>
+        </header>
 
-  return rows;
-}
+        <div className="rounded-md border border-red-300 bg-red-50 p-4 text-red-700 text-sm">
+          Error loading flagged reviews: {error.message}
+        </div>
+      </div>
+    );
+  }
 
-export default async function FlaggedPage() {
-  const flagged = await loadFlagged();
+  // reshape into rows suitable for the client table
+  const rows =
+    data?.map((row: any) => ({
+      // report metadata
+      report_id: row.id,
+      reason: row.reason ?? '(no reason provided)',
+      reported_at: row.created_at,
+
+      // review details
+      review_id: row.review_id,
+      rating: row.reviews?.rating ?? null,
+      comment: row.reviews?.comment ?? '(no comment)',
+      category: row.reviews?.category ?? null,
+      inserted_at: row.reviews?.inserted_at ?? null,
+      club_name: row.reviews?.clubs?.name ?? 'Unknown Club',
+    })) ?? [];
 
   return (
-    <main className="p-6 space-y-4">
-      <h1 className="text-xl font-bold text-gray-900">Flagged reviews</h1>
-      <p className="text-sm text-gray-600">
-        Reports that parents, players, or staff marked as inappropriate.
-      </p>
+    <div className="space-y-4">
+      <header>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+          Flagged
+        </h1>
+        <p className="mt-1 text-gray-500 text-lg">
+          Reviews reported as abusive / inappropriate. Mark them as handled
+          once you’ve reviewed.
+        </p>
+      </header>
 
-      <FlaggedTableClient initial={flagged} />
-    </main>
+      <div className="rounded-md border border-gray-200 bg-white shadow-sm">
+        <FlaggedTableClient initialRows={rows} />
+      </div>
+    </div>
   );
 }

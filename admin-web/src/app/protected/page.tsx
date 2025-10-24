@@ -1,81 +1,79 @@
 // admin-web/src/app/protected/page.tsx
-import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
-import FlaggedTableClient, { FlaggedRow } from './flagged/FlaggedTableClient';
+import { getSupabaseServerReadOnly } from '@/lib/supabaseServerReadOnly';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-async function getSupabase() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-      },
-    }
-  );
-}
+type MetricCounts = {
+  totalReviews: number;
+  totalClubs: number;
+  openFlags: number;
+  recentToday: number;
+};
 
-// Small helper: count total reviews, avg rating, distinct clubs, etc.
-async function loadDashboardStats() {
-  const supabase = await getSupabase();
+type OpenReportRow = {
+  id: string;
+  review_id: string;
+  reason: string | null;
+  created_at: string;
+  comment_snippet: string;
+  club_name: string | null;
+};
 
-  // total reviews
-  const { count: totalReviews } = await supabase
+export default async function DashboardPage() {
+  const supabase = await getSupabaseServerReadOnly();
+
+  //
+  // 1. basic metrics
+  //
+
+  // totalReviews
+  const { count: totalReviews = 0 } = await supabase
     .from('reviews')
     .select('id', { count: 'exact', head: true });
 
-  // distinct clubs with at least 1 review
-  const { data: clubRows } = await supabase
-    .from('reviews')
-    .select('club_id')
-    .not('club_id', 'is', null);
-  const clubSet = new Set((clubRows || []).map((r: any) => r.club_id));
-  const clubsWithReviews = clubSet.size;
+  // totalClubs
+  const { count: totalClubs = 0 } = await supabase
+    .from('clubs')
+    .select('id', { count: 'exact', head: true });
 
-  // avg rating
-  const { data: ratings } = await supabase
+  // recentToday (reviews in last 24h)
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count: recentToday = 0 } = await supabase
     .from('reviews')
-    .select('rating')
-    .not('rating', 'is', null);
-  const nums = (ratings || [])
-    .map((r: any) => Number(r.rating))
-    .filter((n: number) => !Number.isNaN(n));
-  const avgRating =
-    nums.length === 0
-      ? null
-      : nums.reduce((sum: number, n: number) => sum + n, 0) / nums.length;
+    .select('id', { count: 'exact', head: true })
+    .gte('inserted_at', since);
 
-  return {
-    totalReviews: totalReviews ?? 0,
-    clubsWithReviews,
-    avgRating,
+  // openFlags = number of unresolved review_reports
+  const { count: openFlags = 0 } = await supabase
+    .from('review_reports')
+    .select('id', { count: 'exact', head: true })
+    .eq('resolved', false);
+
+  const metrics: MetricCounts = {
+    totalReviews,
+    totalClubs,
+    openFlags,
+    recentToday,
   };
-}
 
-// flagged preview (first 5 unresolved)
-async function loadFlaggedPreview(): Promise<FlaggedRow[]> {
-  const supabase = await getSupabase();
+  //
+  // 2. "needs attention" list
+  //    Get the latest unresolved review_reports joined to review/comment + club
+  //
 
-  const { data } = await supabase
+  const { data: rawReports, error: reportsError } = await supabase
     .from('review_reports')
     .select(
       `
         id,
-        created_at,
+        review_id,
         reason,
+        created_at,
         resolved,
         reviews (
-          id,
-          rating,
           comment,
           clubs (
-            id,
             name
           )
         )
@@ -85,111 +83,163 @@ async function loadFlaggedPreview(): Promise<FlaggedRow[]> {
     .order('created_at', { ascending: false })
     .limit(5);
 
-  const rows: FlaggedRow[] = (data || []).map((row: any) => ({
-    report_id: row.id,
-    created_at: row.created_at,
-    reason: row.reason,
-    review_id: row.reviews?.id,
-    review_comment: row.reviews?.comment ?? null,
-    review_rating: row.reviews?.rating ?? null,
-    club_name: row.reviews?.clubs?.name ?? 'Unknown club',
-  }));
+  let openReportRows: OpenReportRow[] = [];
 
-  return rows;
-}
-
-export default async function AdminDashboardPage() {
-  const [stats, flaggedPreview] = await Promise.all([
-    loadDashboardStats(),
-    loadFlaggedPreview(),
-  ]);
+  if (!reportsError && rawReports) {
+    openReportRows = rawReports.map((rep: any) => ({
+      id: rep.id,
+      review_id: rep.review_id,
+      reason: rep.reason ?? null,
+      created_at: rep.created_at,
+      comment_snippet:
+        (rep.reviews?.comment || '(no comment)').slice(0, 160),
+      club_name: rep.reviews?.clubs?.name ?? 'Unknown Club',
+    }));
+  }
 
   return (
-    <main className="p-6 space-y-6">
-      {/* Header row */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-600">
-            High-level health of SoccerConnect.
-          </p>
-        </div>
-
-        <form action="/auth/signout" method="post">
-          <button
-            type="submit"
-            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            Sign out
-          </button>
-        </form>
+    <div className="space-y-8">
+      {/* Page heading */}
+      <header>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+          Dashboard
+        </h1>
+        <p className="mt-1 text-gray-500 text-lg">
+          High-level activity and items that may need moderation.
+        </p>
       </header>
 
-      {/* Metrics cards */}
-      <section className="grid gap-4 sm:grid-cols-3">
-        {/* Total Reviews */}
-        <div className="rounded-xl border bg-white p-4 shadow-sm">
-          <div className="text-sm text-gray-500 font-semibold">Total Reviews</div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <div className="text-2xl font-bold text-gray-900">
-              {stats.totalReviews}
-            </div>
-          </div>
-          <div className="mt-2 text-xs text-gray-400">
-            All-time submitted reviews
-          </div>
-        </div>
-
-        {/* Clubs Covered */}
-        <div className="rounded-xl border bg-white p-4 shadow-sm">
-          <div className="text-sm text-gray-500 font-semibold">Clubs Covered</div>
-          <div className="mt-1 text-2xl font-bold text-gray-900">
-            {stats.clubsWithReviews}
-          </div>
-          <div className="mt-2 text-xs text-gray-400">
-            Unique clubs with at least one review
-          </div>
-        </div>
-
-        {/* Avg Rating */}
-        <div className="rounded-xl border bg-white p-4 shadow-sm">
-          <div className="text-sm text-gray-500 font-semibold">Avg Rating</div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <div className="text-2xl font-bold text-gray-900">
-              {stats.avgRating === null
-                ? '–'
-                : stats.avgRating.toFixed(2)}
-            </div>
-            <div className="text-xs text-gray-500">/5</div>
-          </div>
-          <div className="mt-2 text-xs text-gray-400">
-            Overall community score
-          </div>
+      {/* Metric cards */}
+      <section>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Total Reviews"
+            value={metrics.totalReviews}
+            helper="All time"
+          />
+          <StatCard
+            label="Clubs"
+            value={metrics.totalClubs}
+            helper="Active orgs"
+          />
+          <StatCard
+            label="New (24h)"
+            value={metrics.recentToday}
+            helper="Fresh feedback"
+          />
+          <StatCard
+            label="Open Flags"
+            value={metrics.openFlags}
+            helper="Needs review"
+            tone="alert"
+          />
         </div>
       </section>
 
-      {/* Needs attention */}
-      <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">
+      {/* Needs attention list */}
+      <section className="max-w-3xl">
+        <div className="rounded-md border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-200 px-4 py-3 sm:px-6">
+            <h2 className="text-base font-semibold text-gray-900">
               Needs attention
             </h2>
-            <p className="text-sm text-gray-600">
-              The most recently reported reviews. Resolve = keep it on record as handled.
+            <p className="mt-1 text-sm text-gray-500">
+              Latest reports marked as inappropriate or concerning.
             </p>
           </div>
 
-          <a
-            href="/protected/flagged"
-            className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-          >
-            View all →
-          </a>
-        </div>
+          {reportsError ? (
+            <div className="px-4 py-4 text-sm text-red-600">
+              Error loading reports: {reportsError.message}
+            </div>
+          ) : openReportRows.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-gray-500">
+              No unresolved reports. 🎉
+            </div>
+          ) : (
+            <ul className="divide-y divide-gray-100 text-sm">
+              {openReportRows.map((r) => (
+                <li key={r.id} className="px-4 py-4 sm:px-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-gray-900 font-medium">
+                        {r.club_name}
+                      </div>
+                      <div className="mt-1 text-gray-700 leading-snug text-[13px]">
+                        {r.comment_snippet}
+                      </div>
 
-        <FlaggedTableClient initial={flaggedPreview} />
+                      {r.reason && (
+                        <div className="mt-2 inline-block rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700 ring-1 ring-red-200">
+                          {r.reason}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="ml-4 flex-shrink-0 text-right text-[11px] text-gray-500">
+                      {new Date(r.created_at).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 text-right sm:px-6">
+            <a
+              href="/protected/flagged"
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+            >
+              View flagged queue →
+            </a>
+          </div>
+        </div>
       </section>
-    </main>
+    </div>
+  );
+}
+
+// tiny stat card component
+function StatCard({
+  label,
+  value,
+  helper,
+  tone,
+}: {
+  label: string;
+  value: number;
+  helper?: string;
+  tone?: 'alert';
+}) {
+  const isAlert = tone === 'alert';
+
+  return (
+    <div
+      className={`rounded-md border shadow-sm p-4 bg-white ${
+        isAlert
+          ? 'border-red-200 ring-1 ring-red-200/60'
+          : 'border-gray-200 ring-1 ring-gray-200/60'
+      }`}
+    >
+      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+        {label}
+      </div>
+      <div
+        className={`mt-2 text-3xl font-semibold ${
+          isAlert ? 'text-red-600' : 'text-gray-900'
+        }`}
+      >
+        {value}
+      </div>
+      {helper && (
+        <div className="mt-1 text-[13px] text-gray-500">{helper}</div>
+      )}
+    </div>
   );
 }

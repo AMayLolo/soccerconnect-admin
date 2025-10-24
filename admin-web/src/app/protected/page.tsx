@@ -1,272 +1,378 @@
-// src/app/protected/page.tsx
+// admin-web/src/app/protected/page.tsx
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import Link from 'next/link';
+
+// Helpers to compute relative time like "2h ago"
+function formatWhen(iso?: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return d.toLocaleDateString();
+}
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-type CountRow = { label: string; count: number };
-type FlaggedRow = {
-  id: string;
-  rating: number;
-  comment: string | null;
-  category: string | null;
-  inserted_at: string;
-  club_name: string | null;
-};
-
 export default async function AdminDashboardPage() {
   const supabase = await createSupabaseServer();
 
-  // 1. Total reviews per club (top 5 activity)
-  const { data: reviewActivity } = await supabase
+  //
+  // 1. Pull the signed-in admin info (for the greeting)
+  //
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // get role from admin_users
+  let role = null as string | null;
+  if (user) {
+    const { data: row } = await supabase
+      .from('admin_users')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+    role = row?.role ?? null;
+  }
+
+  //
+  // 2. Stats
+  //   - total reviews
+  //   - total clubs
+  //   - new reviews in last 7 days
+  //
+  // total reviews
+  const { count: totalReviewsCount } = await supabase
     .from('reviews')
-    .select('club_id, clubs(name)')
-    .limit(2000); // cheap-ish sample, we just summarize in JS
+    .select('id', { count: 'exact', head: true });
 
-  const activityMap: Record<string, { name: string; count: number }> = {};
-  (reviewActivity ?? []).forEach((row: any) => {
-    const clubId = row.club_id ?? 'unknown';
-    const clubName = row.clubs?.name ?? 'Unknown Club';
-    if (!activityMap[clubId]) {
-      activityMap[clubId] = { name: clubName, count: 0 };
-    }
-    activityMap[clubId].count += 1;
-  });
+  // total clubs
+  const { count: totalClubsCount } = await supabase
+    .from('clubs')
+    .select('id', { count: 'exact', head: true });
 
-  const topActivity = Object.values(activityMap)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
-
-  // 2. Latest 5 real reviews (for "Recent Reviews" list)
-  const { data: latestReviews } = await supabase
+  // new this week (last 7 days)
+  const since = new Date();
+  since.setDate(since.getDate() - 7);
+  const { count: newThisWeekCount } = await supabase
     .from('reviews')
-    .select(
-      `
+    .select('id', { count: 'exact', head: true })
+    .gte('inserted_at', since.toISOString());
+
+  //
+  // 3. Flagged queue preview (top 5 most recent reports)
+  //
+  // We join review_reports -> reviews -> clubs so you can see context.
+  // You might have multiple reports for the same review; for a simple preview,
+  // we'll just show distinct review_ids, most-recent first.
+  const { data: flaggedRowsRaw } = await supabase
+    .from('review_reports')
+    .select(`
+      id,
+      created_at,
+      reason,
+      review_id,
+      reviews (
         id,
         rating,
         comment,
-        category,
         inserted_at,
         clubs (
+          id,
           name
         )
-      `
-    )
+      )
+    `)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  // reduce duplicates by review_id (show latest report per review)
+  const flaggedMap: Record<string, any> = {};
+  (flaggedRowsRaw || []).forEach(rep => {
+    if (!rep.review_id) return;
+    if (!flaggedMap[rep.review_id]) {
+      flaggedMap[rep.review_id] = rep;
+    }
+  });
+  const flaggedRows = Object.values(flaggedMap)
+    .slice(0, 5)
+    .map((rep: any) => {
+      return {
+        review_id: rep.review_id,
+        reason: rep.reason,
+        reported_at: rep.created_at,
+        rating: rep.reviews?.rating ?? null,
+        comment: rep.reviews?.comment ?? '',
+        clubName: rep.reviews?.clubs?.[0]?.name ?? rep.reviews?.clubs?.name ?? 'Unknown club',
+      };
+    });
+
+  //
+  // 4. Recent reviews activity (latest 5 reviews site-wide)
+  //
+  const { data: recentReviewsRaw } = await supabase
+    .from('reviews')
+    .select(`
+      id,
+      rating,
+      comment,
+      inserted_at,
+      category,
+      clubs (
+        id,
+        name
+      )
+    `)
     .order('inserted_at', { ascending: false })
     .limit(5);
 
-  // 3. Count flagged/inappropriate reviews (category = 'staff' for now)
-  const { count: flaggedCount } = await supabase
-    .from('reviews')
-    .select('id', { count: 'exact', head: true })
-    .eq('category', 'staff'); // this is our "flagged" stand-in for now
-
-  // We'll also grab a preview list of flagged to show top 3 in the card
-  const { data: flaggedRows } = await supabase
-    .from('reviews')
-    .select(
-      `
-        id,
-        rating,
-        comment,
-        category,
-        inserted_at,
-        clubs (
-          name
-        )
-      `
-    )
-    .eq('category', 'staff')
-    .order('inserted_at', { ascending: false })
-    .limit(3);
-
-  // Shape data for rendering
-  const recentReviews = (latestReviews ?? []).map((r: any) => ({
-    id: r.id,
-    club: r.clubs?.name ?? 'Unknown Club',
-    rating: r.rating,
-    comment: r.comment ?? '',
-    category: r.category ?? null,
-    inserted_at: r.inserted_at,
-  }));
-
-  const flaggedPreview: FlaggedRow[] = (flaggedRows ?? []).map((r: any) => ({
+  const recentReviews = (recentReviewsRaw || []).map((r: any) => ({
     id: r.id,
     rating: r.rating,
-    comment: r.comment ?? '',
-    category: r.category ?? null,
-    inserted_at: r.inserted_at,
-    club_name: r.clubs?.name ?? 'Unknown Club',
+    comment: r.comment,
+    when: r.inserted_at,
+    category: r.category,
+    clubName: r.clubs?.[0]?.name ?? r.clubs?.name ?? 'Unknown club',
   }));
+
+  //
+  // Layout:
+  // - Header / greeting
+  // - Grid of 3 stat cards
+  // - Two-column section:
+  //     left: Flagged for Review
+  //     right: Recent Activity
+  //
 
   return (
-    <div className="flex flex-col gap-8">
-      {/* HEADER BAR */}
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold text-gray-900">
-          SoccerConnect • Admin
-        </h1>
-        <p className="text-sm text-gray-500">
-          Internal moderation dashboard
-        </p>
-      </header>
-
-      {/* METRIC CARDS GRID */}
-      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Top Clubs by Recent Activity */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-sm font-medium text-gray-700">
-              Most Active Clubs
-            </h2>
-            <span className="text-[11px] text-gray-400">last ~2k reviews</span>
-          </div>
-          <ul className="mt-3 space-y-2 text-sm text-gray-800">
-            {topActivity.length === 0 && (
-              <li className="text-gray-400 text-sm italic">
-                No recent activity
-              </li>
-            )}
-            {topActivity.map((row) => (
-              <li
-                key={row.name}
-                className="flex items-baseline justify-between"
-              >
-                <span className="font-medium">{row.name}</span>
-                <span className="text-gray-500">{row.count}</span>
-              </li>
-            ))}
-          </ul>
+    <div className="space-y-6">
+      {/* HEADER */}
+      <section className="flex flex-col gap-1">
+        <div className="text-sm font-semibold text-gray-900">
+          Hi {user?.email ?? 'admin'}
         </div>
-
-        {/* Flagged / Needs Review */}
-        <div className="rounded-xl border border-rose-200 bg-white p-4 shadow-sm">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-sm font-medium text-gray-700">
-              Flagged Reviews
-            </h2>
-            <Link
-              href="/protected/flagged"
-              className="text-[11px] font-medium text-rose-600 hover:underline"
-            >
-              View all
-            </Link>
-          </div>
-
-          <p className="mt-2 text-3xl font-semibold text-rose-600 leading-none">
-            {flaggedCount ?? 0}
-          </p>
-          <p className="text-[11px] text-gray-500">
-            Marked as “Staff / Needs Attention”
-          </p>
-
-          <ul className="mt-4 space-y-3 max-h-32 overflow-y-auto pr-1">
-            {flaggedPreview.length === 0 && (
-              <li className="text-gray-400 text-sm italic">
-                Nothing flagged 🎉
-              </li>
-            )}
-
-            {flaggedPreview.map((f) => (
-              <li
-                key={f.id}
-                className="rounded border border-gray-200 bg-gray-50 p-2 text-xs text-gray-700"
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-medium">{f.club_name}</span>
-                  <span className="text-[10px] text-gray-400">
-                    {new Date(f.inserted_at).toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </span>
-                </div>
-                <div className="mt-1 line-clamp-2 text-[11px] text-gray-600">
-                  {f.comment || '—'}
-                </div>
-              </li>
-            ))}
-          </ul>
+        <div className="text-xs text-gray-500">
+          Role: {role ?? '—'}
         </div>
-
-        {/* Recent Reviews (count only) */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-sm font-medium text-gray-700">
-              Recent Reviews
-            </h2>
-            <Link
-              href="/protected/reviews"
-              className="text-[11px] font-medium text-blue-600 hover:underline"
-            >
-              View all
-            </Link>
-          </div>
-
-          <p className="mt-2 text-3xl font-semibold text-gray-900 leading-none">
-            {recentReviews.length}
-          </p>
-          <p className="text-[11px] text-gray-500">
-            Last 5 submitted
-          </p>
-
-          <ul className="mt-4 space-y-3 max-h-32 overflow-y-auto pr-1">
-            {recentReviews.length === 0 && (
-              <li className="text-gray-400 text-sm italic">
-                No recent reviews
-              </li>
-            )}
-
-            {recentReviews.map((r) => (
-              <li
-                key={r.id}
-                className="rounded border border-gray-200 bg-gray-50 p-2 text-xs text-gray-700"
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-medium">{r.club}</span>
-                  <span className="text-[10px] text-gray-400">
-                    {new Date(r.inserted_at).toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </span>
-                </div>
-                <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-600">
-                  <span className="font-semibold text-gray-800">
-                    {r.rating}/5
-                  </span>
-                  <span className="line-clamp-1">{r.comment || '—'}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
+        <div className="text-[11px] text-gray-400">
+          Here’s what’s happening across SoccerConnect.
         </div>
       </section>
 
-      {/* FOOTNOTE / LINKS ROW */}
-      <footer className="text-[11px] text-gray-400">
-        <div className="flex flex-wrap items-center gap-4">
+      {/* STATS CARDS */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Total Reviews */}
+        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+            Total Reviews
+          </div>
+          <div className="mt-2 text-3xl font-bold text-gray-900">
+            {totalReviewsCount ?? 0}
+          </div>
+          <div className="mt-1 text-xs text-gray-500">
+            All-time reviews from parents, players & staff
+          </div>
           <Link
             href="/protected/reviews"
-            className="text-blue-600 hover:underline"
+            className="mt-3 inline-block text-xs font-medium text-green-700 hover:text-green-800"
           >
-            Full Reviews
-          </Link>
-          <Link
-            href="/protected/flagged"
-            className="text-rose-600 hover:underline"
-          >
-            Flagged Reviews
-          </Link>
-          <Link
-            href="/protected/reports"
-            className="text-gray-500 hover:underline"
-          >
-            Reports (coming soon)
+            View all reviews →
           </Link>
         </div>
-      </footer>
+
+        {/* Total Clubs */}
+        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+            Clubs in System
+          </div>
+          <div className="mt-2 text-3xl font-bold text-gray-900">
+            {totalClubsCount ?? 0}
+          </div>
+          <div className="mt-1 text-xs text-gray-500">
+            Across all states (live + seeded)
+          </div>
+          <div className="mt-3 text-[11px] text-gray-400">
+            Import more clubs as you expand
+          </div>
+        </div>
+
+        {/* New This Week */}
+        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+            New This Week
+          </div>
+          <div className="mt-2 text-3xl font-bold text-gray-900">
+            {newThisWeekCount ?? 0}
+          </div>
+          <div className="mt-1 text-xs text-gray-500">
+            Reviews in the last 7 days
+          </div>
+          <div className="mt-3 text-[11px] text-gray-400">
+            Helps track engagement growth
+          </div>
+        </div>
+      </section>
+
+      {/* TWO-COLUMN CONTENT */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* FLAGGED QUEUE */}
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm flex flex-col">
+          <div className="border-b border-gray-200 p-4 flex items-baseline justify-between">
+            <div>
+              <div className="text-sm font-semibold text-gray-900">
+                Flagged for Review
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Latest reports from users
+              </div>
+            </div>
+
+            <Link
+              href="/protected/flagged"
+              className="text-[11px] font-medium text-green-700 hover:text-green-800"
+            >
+              View all →
+            </Link>
+          </div>
+
+          {flaggedRows.length === 0 ? (
+            <div className="flex-1 p-4 text-sm text-gray-500">
+              No reported reviews right now. 🎉
+            </div>
+          ) : (
+            <ul className="flex-1 divide-y divide-gray-100 text-sm">
+              {flaggedRows.map((f: any) => (
+                <li key={f.review_id} className="p-4 flex flex-col gap-2">
+                  <div className="flex items-start justify-between">
+                    <div className="font-semibold text-gray-900">
+                      {f.clubName}
+                    </div>
+                    <div className="text-[11px] text-gray-500">
+                      {formatWhen(f.reported_at)}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-[2px] font-semibold text-red-700">
+                      Reported: {f.reason || '—'}
+                    </span>
+                    {f.rating != null && (
+                      <span className="inline-flex items-center rounded-full border border-yellow-200 bg-yellow-50 px-2 py-[2px] font-semibold text-yellow-700">
+                        {f.rating}/5
+                      </span>
+                    )}
+                  </div>
+
+                  {f.comment ? (
+                    <div className="text-gray-700 text-[13px] leading-snug line-clamp-3">
+                      “{f.comment}”
+                    </div>
+                  ) : (
+                    <div className="text-gray-400 text-[13px] italic">
+                      (no comment text)
+                    </div>
+                  )}
+
+                  <div className="flex justify-end">
+                    <Link
+                      href={`/protected/reviews?focus=${encodeURIComponent(
+                        f.review_id
+                      )}`}
+                      className="text-[11px] font-medium text-green-700 hover:text-green-800"
+                    >
+                      Moderate →
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* RECENT ACTIVITY */}
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm flex flex-col">
+          <div className="border-b border-gray-200 p-4 flex items-baseline justify-between">
+            <div>
+              <div className="text-sm font-semibold text-gray-900">
+                Recent Activity
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Latest public reviews
+              </div>
+            </div>
+
+            <Link
+              href="/protected/reviews"
+              className="text-[11px] font-medium text-green-700 hover:text-green-800"
+            >
+              View all →
+            </Link>
+          </div>
+
+          {recentReviews.length === 0 ? (
+            <div className="flex-1 p-4 text-sm text-gray-500">
+              No recent reviews yet.
+            </div>
+          ) : (
+            <ul className="flex-1 divide-y divide-gray-100 text-sm">
+              {recentReviews.map((r) => (
+                <li key={r.id} className="p-4 flex flex-col gap-2">
+                  <div className="flex items-start justify-between">
+                    <div className="font-semibold text-gray-900">
+                      {r.clubName}
+                    </div>
+                    <div className="text-[11px] text-gray-500">
+                      {formatWhen(r.when)}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    {r.rating != null && (
+                      <span className="inline-flex items-center rounded-full border border-yellow-200 bg-yellow-50 px-2 py-[2px] font-semibold text-yellow-700">
+                        {r.rating}/5
+                      </span>
+                    )}
+
+                    {r.category && (
+                      <span className="inline-flex items-center rounded-full border border-gray-300 bg-gray-100 px-2 py-[2px] font-semibold text-gray-700">
+                        {String(r.category).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  {r.comment ? (
+                    <div className="text-gray-700 text-[13px] leading-snug line-clamp-3">
+                      “{r.comment}”
+                    </div>
+                  ) : (
+                    <div className="text-gray-400 text-[13px] italic">
+                      (no comment text)
+                    </div>
+                  )}
+
+                  <div className="flex justify-end">
+                    <Link
+                      href={`/protected/reviews?focus=${encodeURIComponent(
+                        r.id
+                      )}`}
+                      className="text-[11px] font-medium text-green-700 hover:text-green-800"
+                    >
+                      View full →
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

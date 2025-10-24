@@ -1,8 +1,9 @@
 // admin-web/src/app/protected/layout.tsx
 import { createSupabaseServer } from '@/lib/supabaseServer';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import React from 'react';
+import SidebarNav from './SidebarNav';
+
 
 // pages that show up in the sidebar
 const NAV_LINKS = [
@@ -83,20 +84,9 @@ export default async function ProtectedLayout({
               </p>
             </div>
 
-            {/* nav list */}
-            <nav className="flex-1 px-3 py-4 space-y-1 text-sm">
-              {NAV_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`
-                    block rounded-md px-3 py-2 font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900
-                  `}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
+            {/* Sidebar navigation */}
+<SidebarNav />
+
 
             <div className="px-3 py-4 border-t border-gray-200 text-xs text-gray-400">
               © {new Date().getFullYear()} SoccerConnect

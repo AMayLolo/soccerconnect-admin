@@ -1,13 +1,17 @@
 // admin-web/src/app/layout.tsx
-import './globals.css';
-import React from 'react';
 import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'SoccerConnect Admin',
+  title: 'SoccerConnect • Admin',
+  description: 'Internal admin',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <body>{children}</body>

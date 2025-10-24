@@ -19,7 +19,6 @@ type ReviewRow = {
 export default async function AdminDashboardPage() {
   const supabase = await createSupabaseServer();
 
-  // grab latest 20 reviews w/ club name
   const { data, error } = await supabase
     .from('reviews')
     .select(
@@ -51,7 +50,6 @@ export default async function AdminDashboardPage() {
     );
   }
 
-  // normalize to safe shape
   const rows: ReviewRow[] = (data ?? []).map((r: any) => ({
     id: String(r.id),
     rating: r.rating ?? null,
@@ -96,7 +94,7 @@ export default async function AdminDashboardPage() {
                     {row.rating ?? '—'}/5
                   </span>
 
-                  {/* category badge */}
+                  {/* category */}
                   {row.category && (
                     <span className="rounded bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700 capitalize">
                       {row.category}
@@ -116,7 +114,6 @@ export default async function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* comment */}
               {row.comment && (
                 <p className="mt-2 whitespace-pre-line text-gray-700">
                   {row.comment}

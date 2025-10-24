@@ -1,22 +1,27 @@
 // admin-web/src/app/auth/signout/route.ts
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
+// tiny helper to make a server-side supabase client
 function getServerClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  return createClient(url, key);
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 }
 
-export async function POST() {
+// handle GET /auth/signout
+export async function GET() {
   const supabase = getServerClient();
 
+  // ignore any error here, we just want them logged out
   await supabase.auth.signOut();
 
-  return NextResponse.redirect(
-    new URL(
-      '/login',
-      process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-    )
-  );
+  // send them back to login
+  return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_SITE_URL || 'https://admin.soccerconnectusa.com'));
+}
+
+// handle POST too (just in case something still tries to POST)
+export async function POST() {
+  return GET();
 }

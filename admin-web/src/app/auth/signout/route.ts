@@ -1,43 +1,41 @@
 // admin-web/src/app/auth/signout/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 
-function getSupabaseServer(req: NextRequest, res: NextResponse) {
-  return createServerClient(
+export async function POST() {
+  // get cookie store for this request
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         get(name: string) {
-          return req.cookies.get(name)?.value;
+          return cookieStore.get(name)?.value;
         },
-        set(name: string, value: string, options: CookieOptions) {
-          res.cookies.set({ name, value, ...options });
+        set(name: string, value: string, options: any) {
+          cookieStore.set({
+            name,
+            value,
+            ...options,
+          });
         },
-        remove(name: string, options: CookieOptions) {
-          res.cookies.set({ name, value: '', ...options });
+        remove(name: string, options: any) {
+          cookieStore.set({
+            name,
+            value: '',
+            ...options,
+          });
         },
       },
     }
   );
-}
 
-// We’ll support GET so that a plain <a href="/auth/signout"> works.
-export async function GET(req: NextRequest) {
-  // Start building a redirect response right away
-  const res = NextResponse.redirect(new URL('/login', req.url));
-
-  // attach supabase to this response so it can mutate cookies
-  const supabase = getSupabaseServer(req, res);
-
-  // Sign out (this clears the auth cookies in `res`)
+  // clear the Supabase auth session
   await supabase.auth.signOut();
 
-  // Send them to /login with cleared session
-  return res;
-}
-
-// Also allow POST just in case we later switch to a <form method="POST">
-export async function POST(req: NextRequest) {
-  return GET(req);
+  // send them to /login
+  return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_SITE_URL ?? 'https://admin.soccerconnectusa.com'));
 }

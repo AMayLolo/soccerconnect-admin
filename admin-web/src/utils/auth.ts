@@ -1,6 +1,6 @@
+// src/utils/auth.ts
 import { createServerClientInstance } from "@/utils/supabase/server";
 
-// Server-side helper to fetch current authenticated user
 export async function getCurrentUser() {
   const supabase = await createServerClientInstance();
 

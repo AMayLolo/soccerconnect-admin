@@ -1,10 +1,12 @@
+// src/utils/supabase/server.ts
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
 export async function createServerClientInstance() {
+  // ✅ await cookies() — it now returns a Promise
   const cookieStore = await cookies();
 
-  return createServerClient(
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -12,17 +14,10 @@ export async function createServerClientInstance() {
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
-        set(name: string, value: string, options: any) {
-          try {
-            cookieStore.set({ name, value, ...options });
-          } catch {}
-        },
-        remove(name: string, options: any) {
-          try {
-            cookieStore.set({ name, value: "", ...options, maxAge: 0 });
-          } catch {}
-        },
       },
     }
   );
+
+  return supabase;
 }
+

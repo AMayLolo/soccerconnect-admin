@@ -15,11 +15,16 @@ export default async function ProtectedLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
-
   console.log("[PROTECTED LAYOUT] user=", user?.email);
 
-  // ⛔ If not logged in, force them to /login BEFORE rendering anything
+  // If no user -> go to login
   if (!user) {
+    redirect("/login");
+  }
+
+  // If wrong role -> kick them out (optional)
+  const role = (user.user_metadata as any)?.role || "user";
+  if (role !== "admin") {
     redirect("/login");
   }
 
@@ -57,7 +62,6 @@ export default async function ProtectedLayout({
                 Reports
               </Link>
 
-              {/* We already know user exists here */}
               <span className="text-gray-500 text-xs">
                 {user.email ?? "Signed in"}
               </span>

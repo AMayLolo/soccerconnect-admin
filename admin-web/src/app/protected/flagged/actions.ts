@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/utils/supabase/server";
+import { createServerClientInstance } from "@/utils/supabase/server";
 
 /**
  * Marks a flagged report as resolved.
@@ -9,7 +9,7 @@ import { createSupabaseServerClient } from "@/utils/supabase/server";
  */
 export async function resolveFlaggedReports(reportId: string) {
   try {
-    const supabase = await createSupabaseServerClient();
+    const supabase = await createServerClientInstance();
 
     const { error } = await supabase
       .from("review_reports")

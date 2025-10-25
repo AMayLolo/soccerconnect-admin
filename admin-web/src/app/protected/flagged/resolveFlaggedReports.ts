@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupabaseServerClient } from "@/utils/supabase/server";
+import { createServerClientInstance } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
  * Returns { ok: true } on success or { ok: false, error } on failure.
  */
 export async function resolveFlaggedReports(reportId: string) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createServerClientInstance();
 
   try {
     // Update the record in the "review_reports" table

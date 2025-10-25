@@ -1,5 +1,4 @@
-import { createSupabaseServerClient } from "@/utils/supabase/server";
-
+import { createServerClientInstance } from "@/utils/supabase/server";
 import FlaggedTableClient, { FlaggedReport } from "./FlaggedTableClient";
 
 export const revalidate = 0;
@@ -12,7 +11,7 @@ type PageProps = {
 };
 
 export default async function FlaggedPage({ searchParams }: PageProps) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createServerClientInstance();
 
   // 🔹 Pagination setup
   const currentPage = Number(searchParams?.page ?? 1);

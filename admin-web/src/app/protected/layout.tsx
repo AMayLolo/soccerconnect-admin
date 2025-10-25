@@ -1,22 +1,16 @@
 import AdminSidebar from "./AdminSidebar";
 import AdminHeader from "./AdminHeader";
 
-export default function ProtectedLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen bg-zinc-50 text-zinc-900">
-      {/* Left nav */}
+    <div className="flex min-h-screen bg-zinc-50 text-zinc-900">
+      {/* Sidebar */}
       <AdminSidebar />
 
-      {/* Right side (header + page content) */}
-      <div className="flex flex-col flex-1 min-w-0">
+      {/* Main area */}
+      <div className="flex flex-col flex-1">
         <AdminHeader />
-        <main className="flex-1 overflow-y-auto p-4">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto p-8">{children}</main>
       </div>
     </div>
   );

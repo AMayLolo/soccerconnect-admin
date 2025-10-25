@@ -1,11 +1,14 @@
-// src/app/login/page.tsx
+import { getCurrentUser } from "@/utils/auth";
+import { redirect } from "next/navigation";
 import LoginClient from "./LoginClient";
 
 export default async function LoginPage() {
-  // ❗ We are intentionally NOT calling getCurrentUser() here
-  //     and NOT redirecting to /protected if already signed in.
-  //     Reason: avoiding redirect ping-pong between /login and /protected
-  //     if Supabase cookie isn't consistent across both requests yet.
+  const user = await getCurrentUser();
+
+  // If you're already logged in, just go to dashboard.
+  if (user) {
+    redirect("/protected");
+  }
 
   return (
     <main className="min-h-screen flex items-start justify-center bg-white text-gray-900 py-16">

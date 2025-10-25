@@ -1,8 +1,10 @@
+// src/app/api/auth/signout/route.ts
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 export async function GET() {
-  const res = NextResponse.redirect(new URL("/login", process.env.NEXT_PUBLIC_SITE_URL));
+  const cookieStore = await cookies();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,18 +12,24 @@ export async function GET() {
     {
       cookies: {
         get(name: string) {
-          return res.cookies.get(name)?.value;
+          return cookieStore.get(name)?.value;
         },
         set(name: string, value: string, options: any) {
-          res.cookies.set({ name, value, ...options });
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch {}
         },
         remove(name: string, options: any) {
-          res.cookies.set({ name, value: "", ...options, maxAge: 0 });
+          try {
+            cookieStore.set({ name, value: "", ...options });
+          } catch {}
         },
       },
     }
   );
 
   await supabase.auth.signOut();
-  return res;
+
+  // After signout, go back to /login
+  return NextResponse.redirect(new URL("/login", process.env.NEXT_PUBLIC_BASE_URL || "https://admin.soccerconnectusa.com"));
 }

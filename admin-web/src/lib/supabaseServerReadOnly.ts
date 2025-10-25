@@ -1,24 +1,25 @@
-import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
+// lib/supabaseServerReadOnly.ts
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-// READ-ONLY supabase client for Server Components (no cookie writes)
+/**
+ * Read-only Supabase client for Server Components (no cookie writes).
+ * Use for fetching public or low-risk data where session mutation isn’t needed.
+ */
 export async function getSupabaseServerReadOnly() {
-  const cookieStore = await cookies(); // we can read here
+  const cookieStore = await cookies() // ✅ Next 16 requires await
 
-  const supabase = createServerClient(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         get(name: string) {
-          return cookieStore.get(name)?.value;
+          return cookieStore.get(name)?.value
         },
-        // no-ops so Next.js doesn't complain about mutation
-        set() {},
+        set() {},   // no-ops to prevent mutation warnings
         remove() {},
       },
     }
-  );
-
-  return supabase;
+  )
 }

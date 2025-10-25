@@ -1,117 +1,111 @@
 "use client";
 
-import * as React from "react";
-import { resolveFlaggedReport } from "./actions";
+import { useState, useTransition } from "react";
+import toast from "react-hot-toast";
+import { resolveFlaggedReport } from "./resolveFlaggedReport";
 
 export type FlaggedReport = {
   id: string;
-  club_name: string;
   reason: string;
   created_at: string;
+  reported_at: string;
+  resolved: boolean;
+  club_name: string;
 };
 
-export default function FlaggedTableClient({
-  initialReports,
-}: {
+interface Props {
   initialReports: FlaggedReport[];
-}) {
-  // Local working copy so we can hide rows optimistically
-  const [rows, setRows] = React.useState<FlaggedReport[]>(initialReports);
+}
 
-  // Track which rows are in-flight so we can disable their button
-  const [busyIds, setBusyIds] = React.useState<Record<string, boolean>>({});
-
-  // Any last error from the server
-  const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+export default function FlaggedTableClient({ initialReports }: Props) {
+  const [reports, setReports] = useState(initialReports);
+  const [showResolved, setShowResolved] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   async function handleResolve(id: string) {
-    setErrorMsg(null);
+    startTransition(async () => {
+      setReports((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, resolved: true } : r))
+      );
 
-    // mark busy
-    setBusyIds((prev) => ({ ...prev, [id]: true }));
-
-    // optimistic: remove from list immediately
-    setRows((prev) => prev.filter((r) => r.id !== id));
-
-    const result = await resolveFlaggedReport(id);
-
-    if (!result.ok) {
-      // restore if failed
-      const original = initialReports.find((r) => r.id === id);
-      setRows((prev) => (original ? [...prev, original] : prev));
-
-      setErrorMsg(result.error ?? "Unable to resolve");
-    }
-
-    // clear busy flag
-    setBusyIds((prev) => {
-      const { [id]: _removed, ...rest } = prev;
-      return rest;
+      const res = await resolveFlaggedReport(id);
+      if (!res.ok) {
+        toast.error(`Failed to resolve: ${res.error}`);
+        setReports((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, resolved: false } : r))
+        );
+      } else {
+        toast.success("✅ Report marked as resolved");
+      }
     });
   }
 
+  const filtered = reports.filter((r) =>
+    showResolved ? r.resolved : !r.resolved
+  );
+
   return (
     <div className="space-y-4">
-      {errorMsg && (
-        <div className="rounded-lg bg-red-500/10 text-red-400 text-sm px-3 py-2 border border-red-500/30">
-          {errorMsg}
-        </div>
-      )}
+      <div className="flex justify-between items-center">
+        <h1 className="text-xl font-semibold text-gray-900">
+          {showResolved ? "Resolved Reports" : "Unresolved Reports"}
+        </h1>
+        <button
+          onClick={() => setShowResolved(!showResolved)}
+          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition"
+        >
+          {showResolved ? "Show Unresolved" : "Show Resolved"}
+        </button>
+      </div>
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/40">
-        <table className="min-w-full text-left text-sm text-zinc-200">
-          <thead className="bg-zinc-900/70 text-xs uppercase text-zinc-500 tracking-wide">
+      {filtered.length === 0 ? (
+        <p className="text-gray-500 text-sm">No reports to display.</p>
+      ) : (
+        <table className="min-w-full border border-gray-300 text-sm">
+          <thead className="bg-gray-100 text-gray-700">
             <tr>
-              <th className="px-4 py-3 font-medium">Club</th>
-              <th className="px-4 py-3 font-medium">Reason</th>
-              <th className="px-4 py-3 font-medium">Reported</th>
-              <th className="px-4 py-3 font-medium text-right">Action</th>
+              <th className="px-4 py-2 border">Club</th>
+              <th className="px-4 py-2 border">Reason</th>
+              <th className="px-4 py-2 border">Reported</th>
+              <th className="px-4 py-2 border">Status</th>
+              <th className="px-4 py-2 border text-right">Action</th>
             </tr>
           </thead>
-
-          <tbody className="divide-y divide-zinc-800">
-            {rows.length === 0 ? (
-              <tr>
+          <tbody>
+            {filtered.map((r) => (
+              <tr key={r.id} className="border-t hover:bg-gray-50">
+                <td className="px-4 py-2">{r.club_name}</td>
+                <td className="px-4 py-2">{r.reason}</td>
+                <td className="px-4 py-2">
+                  {r.reported_at
+                    ? new Date(r.reported_at).toLocaleDateString()
+                    : "—"}
+                </td>
                 <td
-                  className="px-4 py-6 text-center text-zinc-500 text-sm"
-                  colSpan={4}
+                  className={`px-4 py-2 font-medium ${
+                    r.resolved ? "text-green-600" : "text-red-600"
+                  }`}
                 >
-                  🎉 Nothing flagged. Clean sheet.
+                  {r.resolved ? "Resolved" : "Unresolved"}
+                </td>
+                <td className="px-4 py-2 text-right">
+                  {r.resolved ? (
+                    <span className="text-gray-400 text-sm">—</span>
+                  ) : (
+                    <button
+                      disabled={isPending}
+                      onClick={() => handleResolve(r.id)}
+                      className="text-blue-600 hover:underline disabled:opacity-50"
+                    >
+                      {isPending ? "Marking..." : "Mark as Resolved"}
+                    </button>
+                  )}
                 </td>
               </tr>
-            ) : (
-              rows.map((report) => (
-                <tr
-                  key={report.id}
-                  className="hover:bg-zinc-800/30 transition-colors"
-                >
-                  <td className="px-4 py-3 font-medium text-zinc-100">
-                    {report.club_name}
-                  </td>
-
-                  <td className="px-4 py-3 text-zinc-300 whitespace-pre-wrap">
-                    {report.reason}
-                  </td>
-
-                  <td className="px-4 py-3 text-zinc-400 text-xs">
-                    {new Date(report.created_at).toLocaleString()}
-                  </td>
-
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleResolve(report.id)}
-                      disabled={!!busyIds[report.id]}
-                      className="inline-flex items-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {busyIds[report.id] ? "Resolving..." : "Resolve"}
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
+            ))}
           </tbody>
         </table>
-      </div>
+      )}
     </div>
   );
 }

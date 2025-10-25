@@ -1,28 +1,21 @@
 // admin-web/src/app/protected/page.tsx
-import { createSupabaseServer } from '@/lib/supabaseServer';
-import Link from 'next/link';
+import { createSupabaseServer } from '@/lib/supabaseServer'
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
-// helper to build the async supabase client with cookies
-async function makeSb() {
-  const supabase = await createSupabaseServer({
-    get: async (name: string) => {
-      const jar = await import('next/headers').then(m => m.cookies());
-      return (await jar).get(name)?.value;
-    },
-  });
-  return supabase;
-}
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
-// get dashboard summary data
+// -----------------------------
+// Dashboard data loader
+// -----------------------------
 async function getDashboardData() {
-  const supabase = await makeSb();
+  const supabase = await createSupabaseServer()
 
-  // 1. total # of clubs (or whatever you were showing already)
-  const { data: clubsData } = await supabase
-    .from('clubs')
-    .select('id, name');
+  // 1️⃣ Total number of clubs
+  const { data: clubsData } = await supabase.from('clubs').select('id, name')
 
-  // 2. latest reviews across all clubs (limit 5 for dashboard)
+  // 2️⃣ Latest reviews (limit 5)
   const { data: latestReviewsData } = await supabase
     .from('reviews')
     .select(
@@ -32,16 +25,15 @@ async function getDashboardData() {
         comment,
         category,
         inserted_at,
-        clubs:club_id (
+        club_id (
           name
         )
       `
     )
     .order('inserted_at', { ascending: false })
-    .limit(5);
+    .limit(5)
 
-  // 3. flagged reports preview (unresolved first)
-  // We DON'T need full joined shape here, just enough to show a summary tile
+  // 3️⃣ Flagged reports preview (limit 5)
   const { data: flaggedPreviewData } = await supabase
     .from('review_reports')
     .select(
@@ -50,20 +42,18 @@ async function getDashboardData() {
         reason,
         reported_at,
         resolved,
-        reviews:review_id (
+        review_id (
           comment,
-          clubs:club_id (
+          club_id (
             name
           )
         )
       `
     )
     .order('reported_at', { ascending: false })
-    .limit(5);
+    .limit(5)
 
-  // massage data into friendlier dashboard bits
-
-  const clubCount = clubsData?.length ?? 0;
+  const clubCount = clubsData?.length ?? 0
 
   const latestReviews = (latestReviewsData ?? []).map((r: any) => ({
     id: r.id,
@@ -71,46 +61,59 @@ async function getDashboardData() {
     comment: r.comment ?? null,
     category: r.category ?? null,
     inserted_at: r.inserted_at ?? '',
-    club_name: r.clubs?.name ?? 'Unknown Club',
-  }));
+    club_name: r.club_id?.name ?? 'Unknown Club',
+  }))
 
-  // unresolved + recent flagged items
   const flaggedPreview = (flaggedPreviewData ?? []).map((fr: any) => ({
     report_id: fr.id,
     reason: fr.reason ?? null,
     reported_at: fr.reported_at ?? '',
-    club_name: fr.reviews?.clubs?.name ?? 'Unknown Club',
-    excerpt:
-      fr.reviews?.comment
-        ? fr.reviews.comment.slice(0, 120)
-        : '(no comment)',
+    club_name: fr.review_id?.club_id?.name ?? 'Unknown Club',
+    excerpt: fr.review_id?.comment
+      ? fr.review_id.comment.slice(0, 120)
+      : '(no comment)',
     resolved: !!fr.resolved,
-  }));
+  }))
 
-  const unresolvedCount = flaggedPreview.filter(f => !f.resolved).length;
+  const unresolvedCount = flaggedPreview.filter(f => !f.resolved).length
 
   return {
     clubCount,
     latestReviews,
     flaggedPreview,
     unresolvedCount,
-  };
+  }
 }
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
+// -----------------------------
+// Dashboard Page Component
+// -----------------------------
 export default async function DashboardPage() {
+  const supabase = await createSupabaseServer()
+
+  // 🧩 Check user session + role
   const {
-    clubCount,
-    latestReviews,
-    flaggedPreview,
-    unresolvedCount,
-  } = await getDashboardData();
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  if (error || !user) {
+    redirect('/login')
+  }
+
+  // Optionally enforce admin-only access
+  const role = user.user_metadata?.role || 'user'
+  if (role !== 'admin') {
+    redirect('/')
+  }
+
+  // Load dashboard data
+  const { clubCount, latestReviews, flaggedPreview, unresolvedCount } =
+    await getDashboardData()
 
   return (
     <section className="space-y-8">
-      {/* Header / intro */}
+      {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">
           SoccerConnect • Admin
@@ -120,7 +123,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* Stat cards row */}
+      {/* Stat Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Clubs */}
         <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -130,11 +133,9 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Latest review rating avg, etc. You can customize or add more cards */}
+        {/* Latest Review */}
         <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="text-sm text-gray-500">
-            Latest review score
-          </div>
+          <div className="text-sm text-gray-500">Latest review score</div>
           <div className="mt-2 text-3xl font-semibold text-gray-900">
             {latestReviews.length > 0 && latestReviews[0].rating != null
               ? `${latestReviews[0].rating}/5`
@@ -147,13 +148,11 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Unresolved flags */}
+        {/* Unresolved Flags */}
         <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-sm text-gray-500">
-                Unresolved reports
-              </div>
+              <div className="text-sm text-gray-500">Unresolved reports</div>
               <div className="mt-2 text-3xl font-semibold text-gray-900">
                 {unresolvedCount}
               </div>
@@ -166,27 +165,21 @@ export default async function DashboardPage() {
             </Link>
           </div>
           <div className="mt-2 text-xs text-gray-500">
-            {unresolvedCount > 0
-              ? 'Needs moderation'
-              : 'All clear 👌'}
+            {unresolvedCount > 0 ? 'Needs moderation' : 'All clear 👌'}
           </div>
         </div>
 
-        {/* Placeholder "Reports (coming soon)" */}
+        {/* Placeholder */}
         <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="text-sm text-gray-500">
-            Reports (coming soon)
-          </div>
-          <div className="mt-2 text-3xl font-semibold text-gray-900">
-            —
-          </div>
+          <div className="text-sm text-gray-500">Reports (coming soon)</div>
+          <div className="mt-2 text-3xl font-semibold text-gray-900">—</div>
           <div className="mt-1 text-xs text-gray-500">
             Automated health metrics
           </div>
         </div>
       </div>
 
-      {/* Latest Reviews block */}
+      {/* Latest Reviews */}
       <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
         <div className="border-b border-gray-200 p-4">
           <div className="flex items-center justify-between">
@@ -212,12 +205,10 @@ export default async function DashboardPage() {
             </li>
           )}
 
-          {latestReviews.map((r) => (
+          {latestReviews.map(r => (
             <li key={r.id} className="p-4 text-sm leading-5">
               <div className="flex items-start justify-between">
-                <div className="font-medium text-gray-900">
-                  {r.club_name}
-                </div>
+                <div className="font-medium text-gray-900">{r.club_name}</div>
                 <div className="ml-4 text-xs text-gray-500">
                   {new Date(r.inserted_at).toLocaleString()}
                 </div>
@@ -242,7 +233,7 @@ export default async function DashboardPage() {
         </ul>
       </div>
 
-      {/* Flagged Reports Preview block */}
+      {/* Flagged Reports */}
       <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
         <div className="border-b border-gray-200 p-4">
           <div className="flex items-center justify-between">
@@ -268,12 +259,10 @@ export default async function DashboardPage() {
             </li>
           )}
 
-          {flaggedPreview.map((f) => (
+          {flaggedPreview.map(f => (
             <li key={f.report_id} className="p-4 text-sm leading-5">
               <div className="flex items-start justify-between">
-                <div className="font-medium text-gray-900">
-                  {f.club_name}
-                </div>
+                <div className="font-medium text-gray-900">{f.club_name}</div>
                 <div className="ml-4 text-xs text-gray-500">
                   {f.reported_at
                     ? new Date(f.reported_at).toLocaleString()
@@ -285,10 +274,7 @@ export default async function DashboardPage() {
                 <span className="mr-2 inline-flex rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700">
                   {f.resolved ? 'Resolved' : 'Flagged'}
                 </span>
-
-                <span className="text-gray-700">
-                  {f.excerpt}
-                </span>
+                <span className="text-gray-700">{f.excerpt}</span>
               </div>
 
               {f.reason && (
@@ -301,5 +287,5 @@ export default async function DashboardPage() {
         </ul>
       </div>
     </section>
-  );
+  )
 }

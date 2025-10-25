@@ -1,33 +1,27 @@
-// admin-web/src/lib/supabaseServerAdmin.ts
-// this is just like your getSupabaseServerReadOnly but without restricting the client.
-// we assume anon key can update `review_reports.resolved`
-// if you eventually lock writes behind service_role, you would swap in service key here.
+// lib/supabaseServerAdmin.ts
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-
+/**
+ * Server-side Supabase client with elevated privileges.
+ * 
+ * Use this only in trusted server actions or route handlers.
+ * If you later lock writes behind RLS, swap in the SERVICE_ROLE key below.
+ */
 export async function getSupabaseServerAdmin() {
-  // grab cookie store on each call (fresh per request)
-  const cookieStore = await cookies();
+  const cookieStore = await cookies() // required in Next 16
 
-  const supabase = createServerClient(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // or SERVICE_ROLE if you want stricter control
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // change to SERVICE_ROLE if needed
     {
       cookies: {
         get(name: string) {
-          // read-only, fine
-          return cookieStore.get(name)?.value;
+          return cookieStore.get(name)?.value
         },
-        set() {
-          // don't mutate cookies in these server actions
-        },
-        remove() {
-          // don't mutate cookies in these server actions
-        },
+        set() {}, // RSCs can’t mutate cookies
+        remove() {},
       },
     }
-  );
-
-  return supabase;
+  )
 }

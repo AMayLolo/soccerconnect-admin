@@ -1,33 +1,23 @@
-// admin-web/src/app/protected/flagged/resolveFlaggedReports.ts
-'use server';
+"use server";
 
-import { cookies } from 'next/headers';
-import { createSupabaseServer } from '@/lib/supabaseServer';
+import { createSupabaseServer } from "@/utils/supabase/server";
 
-// helper for Next.js 16 async cookies()
-async function getCookieValue(name: string): Promise<string | undefined> {
-  const jar = await cookies();
-  return jar.get(name)?.value;
-}
-
-// Mark a report row resolved=true in review_reports
-export async function resolveFlaggedReport(reportId: string): Promise<boolean> {
-  if (!reportId) return false;
-
-  const supabase = await createSupabaseServer({
-    get: getCookieValue,
-  });
+/**
+ * Marks a flagged report as resolved.
+ * Returns { ok: true } or { ok: false, error }.
+ */
+export async function resolveFlaggedReport(id: string) {
+  const supabase = createSupabaseServer();
 
   const { error } = await supabase
-    .from('review_reports')
+    .from("review_reports")
     .update({ resolved: true })
-    .eq('id', reportId);
+    .eq("id", id);
 
   if (error) {
-    console.error('resolveFlaggedReport error:', error);
-    return false;
+    console.error("Failed to resolve report:", error.message);
+    return { ok: false, error: error.message };
   }
 
-  return true;
+  return { ok: true };
 }
-

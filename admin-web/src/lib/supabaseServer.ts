@@ -1,13 +1,13 @@
-// admin-web/lib/supabaseServer.ts
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+// lib/supabaseServer.ts
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 /**
- * Server-side Supabase client for RSC/route handlers.
- * Next 16: cookies() is async, so this function is async now.
+ * Server-side Supabase client for RSC / route handlers (Next.js 16 compatible).
+ * cookies() is async in Next 16, so this function must also be async.
  */
-export async function createSupabaseServer(p0: unknown) {
-  const cookieStore = await cookies(); // <- MUST await in Next 16
+export async function createSupabaseServer() {
+  const cookieStore = await cookies() // ✅ must await
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,13 +15,11 @@ export async function createSupabaseServer(p0: unknown) {
     {
       cookies: {
         get(name: string) {
-          return cookieStore.get(name)?.value;
+          return cookieStore.get(name)?.value
         },
-        // In RSC, cookies are immutable; set/remove are no-ops here.
-        // If you need to write cookies, do it in a Route Handler.
-        set() {},
+        set() {}, // no-ops in RSC
         remove() {},
       },
     }
-  );
+  )
 }

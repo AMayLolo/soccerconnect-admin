@@ -1,100 +1,28 @@
 // admin-web/src/app/protected/data.ts
-import { cookies } from 'next/headers';
-import { createSupabaseServer } from '@/lib/supabaseServer';
-import type { ReviewRow, FlaggedRow } from './types';
+'use server'
 
-// Helper to satisfy createSupabaseServer({ get })
-async function getCookieValue(name: string): Promise<string | undefined> {
-  const store = await cookies();
-  return store.get(name)?.value;
-}
+import { getSupabaseServerAdmin } from '@/lib/supabaseServerAdmin'
 
-// Get most recent public reviews for Reviews page / dashboard cards
-export async function fetchLatestReviews(): Promise<ReviewRow[]> {
-  const supabase = await createSupabaseServer({
-    get: getCookieValue,
-  });
+/**
+ * Marks a flagged report as resolved.
+ * Uses the admin Supabase client (service role capable).
+ * Called via server action from the Flagged Reports table.
+ */
+export async function resolveFlaggedReport(reportId: string) {
+  if (!reportId) throw new Error('Missing report ID')
 
-  // Grab reviews + club name via join
-  const { data, error } = await supabase
-    .from('reviews')
-    .select(
-      `
-        id,
-        rating,
-        comment,
-        category,
-        inserted_at,
-        clubs (
-          name
-        )
-      `
-    )
-    .order('inserted_at', { ascending: false })
-    .limit(20);
+  const supabase = await getSupabaseServerAdmin()
 
-  if (error) {
-    console.error('fetchLatestReviews error:', error);
-    return [];
-  }
-
-  // Normalize to ReviewRow[]
-  return (data ?? []).map((row: any): ReviewRow => ({
-    id: row.id,
-    rating: row.rating ?? null,
-    comment: row.comment ?? null,
-    category: row.category,
-    inserted_at: row.inserted_at,
-    club_name: row.clubs?.name ?? null,
-  }));
-}
-
-// Get unresolved moderation reports for Flagged
-export async function fetchFlaggedReports(): Promise<FlaggedRow[]> {
-  const supabase = await createSupabaseServer({
-    get: getCookieValue,
-  });
-
-  // Pull reports with joined review + club name
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('review_reports')
-    .select(
-      `
-        id,
-        review_id,
-        reason,
-        resolved,
-        created_at,
-        reviews (
-          id,
-          rating,
-          comment,
-          category,
-          inserted_at,
-          clubs (
-            name
-          )
-        )
-      `
-    )
-    .eq('resolved', false) // only unresolved
-    .order('created_at', { ascending: false })
-    .limit(20);
+    .update({ resolved: true })
+    .eq('id', reportId)
 
   if (error) {
-    console.error('fetchFlaggedReports error:', error);
-    return [];
+    console.error('❌ Failed to resolve flagged report:', error)
+    throw new Error('Unable to resolve report')
   }
 
-  // Normalize to FlaggedRow[]
-  return (data ?? []).map((row: any): FlaggedRow => ({
-    report_id: row.id,
-    review_id: row.review_id,
-    club_name: row.reviews?.clubs?.name ?? null,
-    rating: row.reviews?.rating ?? null,
-    comment: row.reviews?.comment ?? null,
-    category: row.reviews?.category ?? 'unknown',
-    inserted_at: row.reviews?.inserted_at ?? row.created_at,
-    resolved: row.resolved ?? false,
-  }));
+  console.log(`✅ Report ${reportId} marked as resolved`)
+  return { success: true }
 }

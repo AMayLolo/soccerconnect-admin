@@ -1,20 +1,15 @@
-// admin-web/src/app/layout.tsx
-import type { Metadata } from 'next';
-import './globals.css';
+import './globals.css' // if you have a global CSS file
+import { Toaster } from 'sonner'
+import type { ReactNode } from 'react'
 
-export const metadata: Metadata = {
-  title: 'SoccerConnect • Admin',
-  description: 'Internal admin',
-};
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <Toaster position="top-right" richColors />
+      </body>
     </html>
-  );
+  )
 }
+

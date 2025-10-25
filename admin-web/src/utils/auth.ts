@@ -1,7 +1,7 @@
-import { createServerClient } from "./supabase/server";
+import { createSupabaseServer } from "./supabase/server";
 
 export async function getCurrentUser() {
-  const supabase = await createServerClient(); // 👈 await since it's now async
+  const supabase = await createSupabaseServer(); // 👈 updated to match the export
 
   const {
     data: { user },

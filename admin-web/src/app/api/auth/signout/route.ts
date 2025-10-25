@@ -1,23 +1,27 @@
 import { NextResponse } from "next/server";
-import { createServerClientInstance } from "@/utils/supabase/server";
+import { createServerClient } from "@supabase/ssr";
 
-export async function GET(req: Request) {
-  try {
-    const supabase = await createServerClientInstance();
+export async function GET() {
+  const res = NextResponse.redirect(new URL("/login", process.env.NEXT_PUBLIC_SITE_URL));
 
-    // ✅ Clears Supabase auth cookies
-    await supabase.auth.signOut();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return res.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          res.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: any) {
+          res.cookies.set({ name, value: "", ...options, maxAge: 0 });
+        },
+      },
+    }
+  );
 
-    // ✅ Redirect to login page cleanly
-    const res = NextResponse.redirect(new URL("/login", req.url));
-
-    // Just in case, remove any cached cookies
-    res.cookies.delete("sb-access-token");
-    res.cookies.delete("sb-refresh-token");
-
-    return res;
-  } catch (err: any) {
-    console.error("Signout error:", err);
-    return NextResponse.json({ error: "Logout failed" }, { status: 500 });
-  }
+  await supabase.auth.signOut();
+  return res;
 }

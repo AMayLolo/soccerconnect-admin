@@ -1,8 +1,8 @@
 import { getCurrentUser } from "@/utils/auth";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 
+// This metadata is fine
 export const metadata = {
   title: "SoccerConnect Admin",
   description: "Internal moderation console for SoccerConnect",
@@ -13,20 +13,13 @@ export default async function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // ✅ Server-side authentication check
+  // We still fetch the user (to show their email / name in the header if we want),
+  // but we do NOT redirect here anymore. Auth gating is middleware's job.
   const user = await getCurrentUser();
-
-  if (!user) {
-    console.log("ProtectedLayout: no user found — redirecting to /login");
-    redirect("/login");
-  }
-
-  console.log("ProtectedLayout: logged in as", user.email);
 
   return (
     <html lang="en">
       <body className="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
-        {/* 🔹 Top Nav */}
         <header className="border-b bg-white shadow-sm sticky top-0 z-20">
           <div className="mx-auto max-w-7xl px-6 py-3 flex items-center justify-between">
             <Link
@@ -39,62 +32,48 @@ export default async function ProtectedLayout({
             <nav className="flex items-center gap-6 text-sm font-medium text-gray-700">
               <Link
                 href="/protected"
-                className="hover:text-blue-600 transition-colors"
+                className="hover:text-blue-600 transition"
               >
                 Dashboard
               </Link>
+
               <Link
                 href="/protected/flagged"
-                className="hover:text-blue-600 transition-colors"
+                className="hover:text-blue-600 transition"
               >
                 Flagged
               </Link>
+
               <Link
                 href="/protected/reports"
-                className="hover:text-blue-600 transition-colors"
+                className="hover:text-blue-600 transition"
               >
                 Reports
               </Link>
+
+              {/* Tiny user indicator if you want it in the header */}
+              {user ? (
+                <span className="text-gray-500 text-xs">
+                  {user.email ?? "Signed in"}
+                </span>
+              ) : null}
+
               <Link
-                href="/auth/signout"
-                className="text-red-600 hover:text-red-700 transition-colors"
+                href="/api/auth/signout"
+                className="text-red-500 hover:text-red-700"
               >
-                Sign Out
+                Logout
               </Link>
             </nav>
           </div>
         </header>
 
-        {/* 🔹 Page Content */}
+        {/* Main app content */}
         <main className="flex-1 mx-auto w-full max-w-7xl px-6 py-8">
           {children}
         </main>
 
-        {/* 🔹 Toast notifications */}
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: "#fff",
-              color: "#111",
-              border: "1px solid #e5e7eb",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-            },
-            success: {
-              iconTheme: {
-                primary: "#16a34a",
-                secondary: "#fff",
-              },
-            },
-            error: {
-              iconTheme: {
-                primary: "#dc2626",
-                secondary: "#fff",
-              },
-            },
-          }}
-        />
+        <Toaster position="bottom-right" />
       </body>
     </html>
   );

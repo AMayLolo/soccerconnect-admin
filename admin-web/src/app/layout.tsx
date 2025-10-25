@@ -1,15 +1,27 @@
-import './globals.css' // if you have a global CSS file
-import { Toaster } from 'sonner'
-import type { ReactNode } from 'react'
+import "./globals.css";
+import { Toaster } from "react-hot-toast";
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export const metadata = {
+  title: "SoccerConnect Admin",
+  description: "Admin dashboard for SoccerConnect",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
         {children}
-        <Toaster position="top-right" richColors />
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: "#333",
+              color: "#fff",
+            },
+          }}
+        />
       </body>
     </html>
-  )
+  );
 }
-

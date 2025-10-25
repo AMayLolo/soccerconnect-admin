@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { createSupabaseServer } from "@/lib/supabaseServer";
-import { resolveFlaggedReport } from "../../flagged/resolveFlaggedReports";
+import { resolveFlaggedReports } from "../../flagged/resolveFlaggedReports";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -98,7 +98,7 @@ export default async function ReportDetailPage({ params }: PageProps) {
           <form
             action={async () => {
               "use server";
-              await resolveFlaggedReport(report.id);
+              await resolveFlaggedReports(report.id);
             }}
           >
             <button

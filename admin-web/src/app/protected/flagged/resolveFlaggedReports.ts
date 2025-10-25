@@ -1,23 +1,33 @@
 "use server";
 
-import { createSupabaseServer } from "@/utils/supabase/server";
+import { createServerClient } from "@/utils/supabase/server";
+import { revalidatePath } from "next/cache";
 
 /**
  * Marks a flagged report as resolved.
- * Returns { ok: true } or { ok: false, error }.
+ * Returns { ok: true } on success or { ok: false, error } on failure.
  */
-export async function resolveFlaggedReport(id: string) {
-  const supabase = createSupabaseServer();
+export async function resolveFlaggedReports(reportId: string) {
+  const supabase = await createServerClient();
 
-  const { error } = await supabase
-    .from("review_reports")
-    .update({ resolved: true })
-    .eq("id", id);
+  try {
+    // Update the record in the "review_reports" table
+    const { error } = await supabase
+      .from("review_reports")
+      .update({ resolved: true })
+      .eq("id", reportId);
 
-  if (error) {
-    console.error("Failed to resolve report:", error.message);
-    return { ok: false, error: error.message };
+    if (error) {
+      console.error("resolveFlaggedReports error:", error.message);
+      return { ok: false, error: error.message };
+    }
+
+    // Revalidate flagged reports page
+    revalidatePath("/protected/flagged");
+
+    return { ok: true };
+  } catch (err: any) {
+    console.error("Unexpected error in resolveFlaggedReports:", err);
+    return { ok: false, error: err.message || "Unknown error" };
   }
-
-  return { ok: true };
 }

@@ -2,7 +2,6 @@
 import { getCurrentUser } from "@/utils/auth";
 import Link from "next/link";
 import { Toaster } from "react-hot-toast";
-import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "SoccerConnect Admin",
@@ -17,17 +16,40 @@ export default async function ProtectedLayout({
   const user = await getCurrentUser();
   console.log("[PROTECTED LAYOUT] user=", user?.email);
 
-  // If no user -> go to login
-  if (!user) {
-    redirect("/login");
+  const role = (user?.user_metadata as any)?.role || "user";
+
+  // ⛔ If no user OR wrong role, DO NOT REDIRECT.
+  //    Just render an access denied message so we can see it in prod.
+  if (!user || role !== "admin") {
+    return (
+      <html lang="en">
+        <body className="bg-gray-50 text-gray-900 min-h-screen flex items-center justify-center">
+          <div className="max-w-sm w-full border border-red-300 bg-red-50 text-red-800 rounded-lg p-6 text-center space-y-4 shadow">
+            <div className="text-lg font-semibold">Access denied</div>
+            <div className="text-sm leading-relaxed">
+              {user
+                ? `You are signed in as ${user.email ?? "unknown"}, role "${role}", but you are not allowed to view this page.`
+                : "You are not signed in or we couldn't read your session."}
+            </div>
+            <div className="text-xs text-red-700">
+              (No redirect. This is a debug screen.)
+            </div>
+
+            <Link
+              href="/login"
+              className="inline-block text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition rounded px-3 py-2"
+            >
+              Go to login
+            </Link>
+          </div>
+
+          <Toaster position="bottom-right" />
+        </body>
+      </html>
+    );
   }
 
-  // If wrong role -> kick them out (optional)
-  const role = (user.user_metadata as any)?.role || "user";
-  if (role !== "admin") {
-    redirect("/login");
-  }
-
+  // ✅ If we DO have a valid admin user, render the real app layout
   return (
     <html lang="en">
       <body className="bg-gray-50 text-gray-900 min-h-screen flex flex-col">

@@ -1,10 +1,14 @@
 import { cookies } from "next/headers";
-import { createServerClient as createSupabaseClient } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 
-export async function createServerClient() {
-  const cookieStore = await cookies(); // 👈 await is required in Next 15+
+/**
+ * ✅ Compatible with older Supabase SSR API (3-argument style)
+ * Works in async Edge runtime
+ */
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies();
 
-  return createSupabaseClient(
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -15,4 +19,6 @@ export async function createServerClient() {
       },
     }
   );
+
+  return supabase;
 }

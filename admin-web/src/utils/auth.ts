@@ -1,17 +1,29 @@
-import { createServerClient } from "./supabase/server";
+import { createSupabaseServerClient } from "./supabase/server";
 
+/**
+ * ✅ Fetches the currently logged-in Supabase user
+ * Uses async Edge-runtime compatible cookies + SSR client
+ */
 export async function getCurrentUser() {
-  const supabase = await createServerClient(); // 👈 updated to match the export
+  try {
+    // Create the Supabase client
+    const supabase = await createSupabaseServerClient();
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+    // Get the user data from the current session
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-  if (error) {
-    console.error("getCurrentUser error:", error.message);
+    // Handle auth error
+    if (error) {
+      console.error("❌ getCurrentUser error:", error.message);
+      return null;
+    }
+
+    return user;
+  } catch (err: any) {
+    console.error("❌ Unexpected getCurrentUser failure:", err);
     return null;
   }
-
-  return user;
 }

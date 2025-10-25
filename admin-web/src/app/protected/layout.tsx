@@ -1,4 +1,6 @@
+import { getCurrentUser } from "@/utils/auth";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 
 export const metadata = {
@@ -6,11 +8,18 @@ export const metadata = {
   description: "Internal moderation console for SoccerConnect",
 };
 
-export default function ProtectedLayout({
+export default async function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // ✅ Server-side authentication check
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   return (
     <html lang="en">
       <body className="bg-gray-50 text-gray-900 min-h-screen flex flex-col">

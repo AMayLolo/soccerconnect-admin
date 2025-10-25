@@ -1,6 +1,8 @@
+// src/app/protected/layout.tsx
 import { getCurrentUser } from "@/utils/auth";
 import Link from "next/link";
 import { Toaster } from "react-hot-toast";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "SoccerConnect Admin",
@@ -15,6 +17,11 @@ export default async function ProtectedLayout({
   const user = await getCurrentUser();
 
   console.log("[PROTECTED LAYOUT] user=", user?.email);
+
+  // ⛔ If not logged in, force them to /login BEFORE rendering anything
+  if (!user) {
+    redirect("/login");
+  }
 
   return (
     <html lang="en">
@@ -50,15 +57,10 @@ export default async function ProtectedLayout({
                 Reports
               </Link>
 
-              {user ? (
-                <span className="text-gray-500 text-xs">
-                  {user.email ?? "Signed in"}
-                </span>
-              ) : (
-                <span className="text-gray-400 text-xs italic">
-                  no user (debug)
-                </span>
-              )}
+              {/* We already know user exists here */}
+              <span className="text-gray-500 text-xs">
+                {user.email ?? "Signed in"}
+              </span>
 
               <Link
                 href="/api/auth/signout"

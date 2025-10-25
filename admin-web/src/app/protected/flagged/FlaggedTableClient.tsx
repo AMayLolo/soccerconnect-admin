@@ -8,7 +8,7 @@ export type FlaggedReport = {
   id: string;
   club_name: string;
   reason: string;
-  reported_at: string;
+  reported_at: string; // ISO timestamp string (we're passing created_at from server)
   created_at: string;
   resolved: boolean;
   comment?: string;
@@ -33,10 +33,13 @@ export default function FlaggedTableClient({
 }: Props) {
   const [reports, setReports] = useState(initialReports);
   const [isPending, startTransition] = useTransition();
-  const [loading, setLoading] = useState(false);
+
+  // track which row is resolving right now
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
+
   const [limit, setLimit] = useState(rowsPerPage);
 
-  const totalPages = Math.ceil(totalCount / limit);
+  const totalPages = Math.ceil(totalCount / limit) || 1;
 
   const handlePageChange = (newPage: number) => {
     const url = `?page=${newPage}&limit=${limit}`;
@@ -49,14 +52,19 @@ export default function FlaggedTableClient({
   };
 
   const handleResolve = async (id: string) => {
-    setLoading(true);
+    setResolvingId(id);
+
     try {
       const result = await resolveFlaggedReports(id);
       if (result.ok) {
         toast.success("✅ Report marked as resolved!");
+
+        // refresh server data in background for next load
         startTransition(async () => {
           await refreshReports();
         });
+
+        // optimistic UI: drop it from table
         setReports((prev) => prev.filter((r) => r.id !== id));
       } else {
         toast.error(result.error || "Failed to resolve report");
@@ -65,7 +73,7 @@ export default function FlaggedTableClient({
       console.error("Resolve error:", err);
       toast.error("Unexpected error resolving report");
     } finally {
-      setLoading(false);
+      setResolvingId(null);
     }
   };
 
@@ -106,7 +114,7 @@ export default function FlaggedTableClient({
         </button>
 
         <span className="text-sm text-gray-600">
-          Page {currentPage} of {totalPages || 1}
+          Page {currentPage} of {totalPages}
         </span>
 
         <button
@@ -123,6 +131,13 @@ export default function FlaggedTableClient({
       </div>
     </div>
   );
+
+  const formatTimestamp = (ts: string | undefined) => {
+    if (!ts) return "—";
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleString();
+  };
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
@@ -147,19 +162,19 @@ export default function FlaggedTableClient({
                 <td className="px-4 py-3 font-medium">{r.club_name}</td>
                 <td className="px-4 py-3">{r.reason}</td>
                 <td className="px-4 py-3 text-gray-500">
-                  {new Date(r.reported_at).toLocaleString()}
+                  {formatTimestamp(r.reported_at)}
                 </td>
                 <td className="px-4 py-3">
                   <button
-                    disabled={loading || isPending}
+                    disabled={!!resolvingId || isPending}
                     onClick={() => handleResolve(r.id)}
                     className={`px-3 py-1.5 rounded-md text-white text-sm font-medium transition ${
-                      loading
+                      resolvingId === r.id
                         ? "bg-gray-400 cursor-not-allowed"
                         : "bg-blue-600 hover:bg-blue-700"
                     }`}
                   >
-                    {loading ? "..." : "Mark Resolved"}
+                    {resolvingId === r.id ? "..." : "Mark Resolved"}
                   </button>
                 </td>
               </tr>

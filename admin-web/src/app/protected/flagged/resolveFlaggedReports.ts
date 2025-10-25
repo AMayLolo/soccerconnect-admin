@@ -11,7 +11,6 @@ export async function resolveFlaggedReports(reportId: string) {
   const supabase = await createServerClientInstance();
 
   try {
-    // Update the record in the "review_reports" table
     const { error } = await supabase
       .from("review_reports")
       .update({ resolved: true })
@@ -22,7 +21,7 @@ export async function resolveFlaggedReports(reportId: string) {
       return { ok: false, error: error.message };
     }
 
-    // Revalidate flagged reports page
+    // Revalidate flagged page so SSR data is fresh on reload
     revalidatePath("/protected/flagged");
 
     return { ok: true };

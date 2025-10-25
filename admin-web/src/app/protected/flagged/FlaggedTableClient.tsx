@@ -1,124 +1,117 @@
-'use client';
+"use client";
 
-import { useOptimistic } from 'react';
-import { resolveFlaggedReport } from './resolveFlaggedReports';
+import * as React from "react";
+import { resolveFlaggedReport } from "./actions";
 
-// shape that BOTH the server page and this client agree on
-export type Row = {
-  report_id: string;
-  reason: string | null;
-  reported_at: string;
-  review_id: string;
-  rating: number | null;
-  comment: string | null;
-  category: string | null;
-  inserted_at: string;
-  club_name: string | null;
-  resolved: boolean;
+export type FlaggedReport = {
+  id: string;
+  club_name: string;
+  reason: string;
+  created_at: string;
 };
 
-type Props = {
-  initialRows: Row[];
-};
+export default function FlaggedTableClient({
+  initialReports,
+}: {
+  initialReports: FlaggedReport[];
+}) {
+  // Local working copy so we can hide rows optimistically
+  const [rows, setRows] = React.useState<FlaggedReport[]>(initialReports);
 
-export default function FlaggedTableClient({ initialRows }: Props) {
-  // optimistic local state so we can flip "resolved" without reload
-  const [rows, apply] = useOptimistic(
-    initialRows,
-    (state: Row[], action: { reportId: string }) => {
-      return state.map(r =>
-        r.report_id === action.reportId ? { ...r, resolved: true } : r
-      );
+  // Track which rows are in-flight so we can disable their button
+  const [busyIds, setBusyIds] = React.useState<Record<string, boolean>>({});
+
+  // Any last error from the server
+  const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+
+  async function handleResolve(id: string) {
+    setErrorMsg(null);
+
+    // mark busy
+    setBusyIds((prev) => ({ ...prev, [id]: true }));
+
+    // optimistic: remove from list immediately
+    setRows((prev) => prev.filter((r) => r.id !== id));
+
+    const result = await resolveFlaggedReport(id);
+
+    if (!result.ok) {
+      // restore if failed
+      const original = initialReports.find((r) => r.id === id);
+      setRows((prev) => (original ? [...prev, original] : prev));
+
+      setErrorMsg(result.error ?? "Unable to resolve");
     }
-  );
 
-  async function handleResolve(reportId: string) {
-    // optimistic update
-    apply({ reportId });
-
-    // server call to flip resolved=true in DB
-    const ok = await resolveFlaggedReport(reportId);
-    if (!ok) {
-      console.error('Failed to mark report resolved on server');
-      // (optional: could roll it back here if we want)
-    }
+    // clear busy flag
+    setBusyIds((prev) => {
+      const { [id]: _removed, ...rest } = prev;
+      return rest;
+    });
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border border-gray-200 bg-white shadow-sm">
-      <table className="min-w-full text-sm leading-5">
-        <thead className="bg-gray-50 text-left text-gray-500">
-          <tr>
-            <th className="px-4 py-2 font-medium">Club</th>
-            <th className="px-4 py-2 font-medium">Rating</th>
-            <th className="px-4 py-2 font-medium">Comment</th>
-            <th className="px-4 py-2 font-medium">Reason</th>
-            <th className="px-4 py-2 font-medium">Reported</th>
-            <th className="px-4 py-2 font-medium">Status</th>
-            <th className="px-4 py-2 font-medium"></th>
-          </tr>
-        </thead>
+    <div className="space-y-4">
+      {errorMsg && (
+        <div className="rounded-lg bg-red-500/10 text-red-400 text-sm px-3 py-2 border border-red-500/30">
+          {errorMsg}
+        </div>
+      )}
 
-        <tbody className="divide-y divide-gray-200 text-gray-800">
-          {rows.map((row: Row) => (
-            <tr key={row.report_id} className="align-top">
-              <td className="px-4 py-3">
-                {row.club_name ?? 'Unknown Club'}
-              </td>
-
-              <td className="px-4 py-3">
-                {row.rating ?? '—'}
-              </td>
-
-              <td className="px-4 py-3 max-w-md whitespace-pre-line">
-                {row.comment ?? '(no comment)'}
-              </td>
-
-              <td className="px-4 py-3 text-gray-600">
-                {row.reason ?? '(no reason)'}
-              </td>
-
-              <td className="px-4 py-3 text-gray-500 text-xs">
-                {new Date(row.reported_at).toLocaleString()}
-              </td>
-
-              <td className="px-4 py-3">
-                {row.resolved ? (
-                  <span className="inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
-                    Resolved
-                  </span>
-                ) : (
-                  <span className="inline-flex rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-700">
-                    Needs review
-                  </span>
-                )}
-              </td>
-
-              <td className="px-4 py-3 text-right">
-                {!row.resolved && (
-                  <button
-                    className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
-                    onClick={() => handleResolve(row.report_id)}
-                  >
-                    Mark resolved
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-
-          {rows.length === 0 && (
+      <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/40">
+        <table className="min-w-full text-left text-sm text-zinc-200">
+          <thead className="bg-zinc-900/70 text-xs uppercase text-zinc-500 tracking-wide">
             <tr>
-              <td
-                colSpan={7}
-                className="px-4 py-6 text-center text-gray-500 text-sm"
-              >
-                No flagged reviews 🎉
-              </td>
+              <th className="px-4 py-3 font-medium">Club</th>
+              <th className="px-4 py-3 font-medium">Reason</th>
+              <th className="px-4 py-3 font-medium">Reported</th>
+              <th className="px-4 py-3 font-medium text-right">Action</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+
+          <tbody className="divide-y divide-zinc-800">
+            {rows.length === 0 ? (
+              <tr>
+                <td
+                  className="px-4 py-6 text-center text-zinc-500 text-sm"
+                  colSpan={4}
+                >
+                  🎉 Nothing flagged. Clean sheet.
+                </td>
+              </tr>
+            ) : (
+              rows.map((report) => (
+                <tr
+                  key={report.id}
+                  className="hover:bg-zinc-800/30 transition-colors"
+                >
+                  <td className="px-4 py-3 font-medium text-zinc-100">
+                    {report.club_name}
+                  </td>
+
+                  <td className="px-4 py-3 text-zinc-300 whitespace-pre-wrap">
+                    {report.reason}
+                  </td>
+
+                  <td className="px-4 py-3 text-zinc-400 text-xs">
+                    {new Date(report.created_at).toLocaleString()}
+                  </td>
+
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => handleResolve(report.id)}
+                      disabled={!!busyIds[report.id]}
+                      className="inline-flex items-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {busyIds[report.id] ? "Resolving..." : "Resolve"}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

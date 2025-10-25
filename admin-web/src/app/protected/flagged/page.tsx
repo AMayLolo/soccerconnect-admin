@@ -1,81 +1,78 @@
-// admin-web/src/app/protected/flagged/page.tsx
-import { createSupabaseServer } from '@/lib/supabaseServer';
-import FlaggedTableClient from './FlaggedTableClient';
+import FlaggedTableClient, {
+    FlaggedReport,
+} from "./FlaggedTableClient";
 
-// fetch flagged reports + review + club info
-async function fetchFlaggedRows() {
-  const supabase = await createSupabaseServer({
-    // Next.js 16 cookies() is async, so we pass an async getter
-    get: async (name: string) => {
-      const jar = await import('next/headers').then(m => m.cookies());
-      return (await jar).get(name)?.value;
-    },
-  });
+import { getCurrentUser } from "@/utils/auth";
+import { createServerClient } from "@/utils/supabase/server";
 
-  // Pull review_reports joined to reviews and clubs
-  // (reviews = the actual user review text; review_reports = moderation reports)
+export default async function FlaggedPage() {
+  // auth
+  const user = await getCurrentUser();
+  if (!user || user.role !== "admin") {
+    return (
+      <main className="p-6">
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 p-4 text-sm">
+          Unauthorized
+        </div>
+      </main>
+    );
+  }
+
+  // 👇 IMPORTANT: await here too
+  const supabase = await createServerClient();
+
+  // OPTION A: if you actually have a clubs table with relationship
   const { data, error } = await supabase
-    .from('review_reports')
+    .from("flagged_reports")
     .select(
       `
         id,
         reason,
-        reported_at,
-        resolved,
-        reviews:review_id (
-          id,
-          rating,
-          comment,
-          category,
-          inserted_at,
-          clubs:club_id (
-            name
-          )
+        created_at,
+        clubs (
+          name
         )
       `
     )
-    .order('reported_at', { ascending: false });
+    .is("resolved_at", null)
+    .order("created_at", { ascending: false });
 
   if (error) {
-    console.error('fetchFlaggedRows error:', error);
-    return [];
+    console.error("fetch flagged_reports error:", error);
+    return (
+      <main className="p-6">
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 p-4 text-sm">
+          Failed to load flagged reports.
+        </div>
+      </main>
+    );
   }
 
-  // Normalize / flatten data into the shape our client expects
-  const rows = (data ?? []).map((r: any) => ({
-    report_id: r.id,                            // report row id
-    reason: r.reason ?? null,
-    reported_at: r.reported_at,                 // timestamp when flagged
-    review_id: r.reviews?.id ?? '',             // original review id
-    rating: r.reviews?.rating ?? null,
-    comment: r.reviews?.comment ?? null,
-    category: r.reviews?.category ?? null,
-    inserted_at: r.reviews?.inserted_at ?? '',  // when the review was created
-    club_name: r.reviews?.clubs?.name ?? null,  // club name from join
-    resolved: !!r.resolved,                     // ensure boolean
+  // Normalize for the client component
+  const rows: FlaggedReport[] = (data ?? []).map((row: any) => ({
+    id: row.id,
+    reason: row.reason,
+    created_at: row.created_at,
+    club_name: row.clubs?.name ?? "Unknown club",
   }));
 
-  return rows;
-}
-
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
-export default async function FlaggedPage() {
-  const flaggedRows = await fetchFlaggedRows();
-
   return (
-    <section className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Flagged</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Reviews reported by users as inappropriate or unsafe.
-        </p>
-      </div>
+    <main className="p-6 space-y-6">
+      <section>
+        <h1 className="text-xl font-semibold text-zinc-100 flex items-center gap-2">
+          Flagged Content
+          <span className="text-xs font-normal text-zinc-500">
+            ({rows.length} open)
+          </span>
+        </h1>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <FlaggedTableClient initialRows={flaggedRows} />
-      </div>
-    </section>
+        <p className="text-sm text-zinc-500">
+          These are reports submitted by parents. When you’ve handled it,
+          resolve the item to hide it from this queue.
+        </p>
+      </section>
+
+      <FlaggedTableClient initialReports={rows} />
+    </main>
   );
 }

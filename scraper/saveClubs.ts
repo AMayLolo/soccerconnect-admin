@@ -1,5 +1,5 @@
-import { supabase } from "./supabaseClient";
 import type { ClubRecord } from "./scrapeSampleDirectory";
+import { supabase } from "./supabaseClient";
 
 export async function saveClubs(clubs: ClubRecord[]) {
   if (!clubs || clubs.length === 0) {

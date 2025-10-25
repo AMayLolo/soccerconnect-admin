@@ -1,6 +1,5 @@
 import { chromium, Page } from "playwright";
 
-// Shape of the club data we want to save
 export type ClubRecord = {
   club_name: string;
   city: string;
@@ -14,112 +13,112 @@ export type ClubRecord = {
   last_scraped_at: string;
 };
 
-// normalize text so it's not full of weird whitespace/newlines
+// tiny helper to clean text nodes
 function clean(txt: string | null | undefined): string {
   if (!txt) return "";
-  return txt.trim().replace(/\s+/g, " ");
+  return txt
+    .replace(/\s+/g, " ")
+    .replace(/·/g, " ")
+    .trim();
 }
 
-// This function scrapes all the club "cards" on the page and turns them
-// into ClubRecord objects. You will update the selectors once we target a real site.
-async function scrapeDirectoryPage(page: Page): Promise<ClubRecord[]> {
-  // grab every DOM element that represents a single club card/row
-  const clubCards = await page.$$(".club-card");
+/**
+ * scrapeNTXClubsFromPage:
+ * The NTX page at https://www.ntxsoccer.org/competitive-member-clubs/
+ * visually lists club names like:
+ *   Dallas Surf
+ *   Dallas Texans
+ *   Solar Soccer Club
+ *   Sting Soccer Club
+ *   Steel United Texas
+ * etc.  (source: North Texas Soccer competitive member clubs listing). :contentReference[oaicite:1]{index=1}
+ *
+ * We will:
+ * - grab all text content inside the main content area
+ * - split it into lines
+ * - filter out junk, headers, empty lines
+ * - dedupe
+ */
+async function scrapeNTXClubsFromPage(page: Page): Promise<ClubRecord[]> {
+  // 1. get the whole main content text (we'll refine later if needed)
+  const fullTextRaw = await page.evaluate(() => {
+    // Try to find the main article/body area where the list lives.
+    // Common patterns on these NTX pages use <main> or an element with role="main".
+    const mainEl =
+      document.querySelector("main") ||
+      document.querySelector('[role="main"]') ||
+      document.body;
 
-  const results: ClubRecord[] = [];
+    return mainEl?.textContent || "";
+  });
 
-  for (const card of clubCards) {
-    // club name
-    const club_name = clean(
-      await card
-        .$eval(".club-name", (el: Element) => el.textContent)
-        .catch(() => "")
-    );
+  // 2. Split into lines
+  const lines = fullTextRaw
+    .split("\n")
+    .map((l) => clean(l))
+    .filter((l) => l.length > 0);
 
-    // location string, like "Naperville, IL"
-    const locationRaw = clean(
-      await card
-        .$eval(".club-location", (el: Element) => el.textContent)
-        .catch(() => "")
-    );
+  // 3. Heuristic filter:
+  // Keep lines that look like club names (words, maybe FC, SC, United, etc.)
+  // Toss generic site text like "Membership Services", "NTX Soccer eNews", footer junk, etc.
+  const likelyClubLines = lines.filter((line) => {
+    const lower = line.toLowerCase();
 
-    let city = "";
-    let state = "";
-    if (locationRaw.includes(",")) {
-      const parts = locationRaw.split(",").map((p) => p.trim());
-      city = parts[0] || "";
-      state = parts[1] || "";
-    } else {
-      city = locationRaw;
-      state = "";
-    }
+    // toss obvious non-club sections
+    if (lower.includes("membership services")) return false;
+    if (lower.includes("general information")) return false;
+    if (lower.includes("youth")) return false;
+    if (lower.includes("insurance")) return false;
+    if (lower.includes("risk management")) return false;
+    if (lower.includes("newsletter")) return false;
+    if (lower.includes("©")) return false;
+    if (lower.includes("u.s. soccer")) return false;
+    if (lower.includes("fifa")) return false;
+    if (lower.includes("all rights reserved")) return false;
+    if (lower.includes("privacy policy")) return false;
+    if (lower.includes("contact us")) return false;
+    if (lower.includes("north texas soccer")) return false;
 
-    // main website
-    const website_url =
-      (await card
-        .$eval(
-          ".club-website a",
-          (el: Element) => (el as HTMLAnchorElement).href
-        )
-        .catch(() => "")) || "";
+    // throw away super short stuff ("Close")
+    if (line.length < 3) return false;
 
-    // tryout / ID camp / placement info link (optional)
-    const tryout_info_url =
-      (await card
-        .$eval(
-          ".tryout-link a",
-          (el: Element) => (el as HTMLAnchorElement).href
-        )
-        .catch(() => "")) || "";
+    // This page shows clubs like "Dallas Surf", "Solar Soccer Club", "FC Dallas Youth", etc.
+    // A quick heuristic: at least 2 words OR contains "FC"/"SC"/"Soccer"/"United"/"Dallas"
+    const wordCount = line.split(" ").length;
+    if (wordCount >= 2) return true;
+    if (/\b(FC|SC)\b/i.test(line)) return true;
+    if (/soccer/i.test(line)) return true;
+    if (/dallas/i.test(line)) return true;
+    if (/united/i.test(line)) return true;
+    if (/sting/i.test(line)) return true;
+    if (/solar/i.test(line)) return true;
 
-    // age range (ex: "U7-U19")
-    const ages = clean(
-      await card
-        .$eval(".age-range", (el: Element) => el.textContent)
-        .catch(() => "")
-    );
+    return false;
+  });
 
-    // competitive levels (ex: "ECNL, MLS NEXT")
-    const competition_level = clean(
-      await card
-        .$eval(".levels", (el: Element) => el.textContent)
-        .catch(() => "")
-    );
+  // 4. Dedupe (the page sometimes repeats nav or footer text)
+  const uniqueNames = Array.from(new Set(likelyClubLines));
 
-    // marketing blurb / about
-    const about = clean(
-      await card
-        .$eval(".description", (el: Element) => el.textContent)
-        .catch(() => "")
-    );
-
-    // club crest / logo
-    const badge_logo_url =
-      (await card
-        .$eval(
-          "img.club-logo",
-          (el: Element) => (el as HTMLImageElement).src
-        )
-        .catch(() => "")) || "";
-
-    results.push({
-      club_name,
-      city,
-      state,
-      website_url,
-      tryout_info_url: tryout_info_url || undefined,
-      ages: ages || undefined,
-      competition_level: competition_level || undefined,
-      badge_logo_url: badge_logo_url || undefined,
-      about: about || undefined,
+  // 5. Convert to ClubRecord[]
+  const clubs: ClubRecord[] = uniqueNames.map((clubName) => {
+    return {
+      club_name: clubName,
+      city: "", // NTX page doesn’t give city directly. We'll enrich later.
+      state: "TX",
+      website_url: "", // we'll enrich later with a follow-up scrape per club
+      tryout_info_url: undefined,
+      ages: undefined,
+      competition_level: undefined,
+      badge_logo_url: undefined,
+      about: undefined,
       last_scraped_at: new Date().toISOString(),
-    });
-  }
+    };
+  });
 
-  return results;
+  return clubs;
 }
 
-// Launch browser, scrape that page, return the array of clubs
+// Browser wrapper
 export async function scrapeDirectory(url: string): Promise<ClubRecord[]> {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
@@ -127,7 +126,7 @@ export async function scrapeDirectory(url: string): Promise<ClubRecord[]> {
   console.log("Navigating to", url);
   await page.goto(url, { waitUntil: "domcontentloaded" });
 
-  const clubs = await scrapeDirectoryPage(page);
+  const clubs = await scrapeNTXClubsFromPage(page);
 
   await browser.close();
   return clubs;

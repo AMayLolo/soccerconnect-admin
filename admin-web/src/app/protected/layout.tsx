@@ -2,7 +2,6 @@ import { getCurrentUser } from "@/utils/auth";
 import Link from "next/link";
 import { Toaster } from "react-hot-toast";
 
-// This metadata is fine
 export const metadata = {
   title: "SoccerConnect Admin",
   description: "Internal moderation console for SoccerConnect",
@@ -13,9 +12,9 @@ export default async function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // We still fetch the user (to show their email / name in the header if we want),
-  // but we do NOT redirect here anymore. Auth gating is middleware's job.
   const user = await getCurrentUser();
+
+  console.log("[PROTECTED LAYOUT] user=", user?.email);
 
   return (
     <html lang="en">
@@ -51,12 +50,15 @@ export default async function ProtectedLayout({
                 Reports
               </Link>
 
-              {/* Tiny user indicator if you want it in the header */}
               {user ? (
                 <span className="text-gray-500 text-xs">
                   {user.email ?? "Signed in"}
                 </span>
-              ) : null}
+              ) : (
+                <span className="text-gray-400 text-xs italic">
+                  no user (debug)
+                </span>
+              )}
 
               <Link
                 href="/api/auth/signout"
@@ -68,7 +70,6 @@ export default async function ProtectedLayout({
           </div>
         </header>
 
-        {/* Main app content */}
         <main className="flex-1 mx-auto w-full max-w-7xl px-6 py-8">
           {children}
         </main>

@@ -1,6 +1,6 @@
 // admin-web/src/app/protected/page.tsx
-import { cookies } from 'next/headers';
 import { createSupabaseServer } from '@/lib/supabaseServer';
+import { cookies } from 'next/headers';
 import FlaggedTableClient from './flagged/FlaggedTableClient';
 
 export const dynamic = 'force-dynamic';

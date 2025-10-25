@@ -17,8 +17,11 @@ export default async function ProtectedLayout({
   const user = await getCurrentUser();
 
   if (!user) {
+    console.log("ProtectedLayout: no user found — redirecting to /login");
     redirect("/login");
   }
+
+  console.log("ProtectedLayout: logged in as", user.email);
 
   return (
     <html lang="en">
@@ -51,6 +54,12 @@ export default async function ProtectedLayout({
                 className="hover:text-blue-600 transition-colors"
               >
                 Reports
+              </Link>
+              <Link
+                href="/auth/signout"
+                className="text-red-600 hover:text-red-700 transition-colors"
+              >
+                Sign Out
               </Link>
             </nav>
           </div>

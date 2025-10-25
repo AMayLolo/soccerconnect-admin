@@ -3,9 +3,10 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
 export async function createServerClientInstance() {
-  const cookieStore = await cookies(); // 👈 now awaited
+  // 👇 must await cookies()
+  const cookieStore = await cookies();
 
-  return createServerClient(
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -17,17 +18,19 @@ export async function createServerClientInstance() {
           try {
             cookieStore.set({ name, value, ...options });
           } catch {
-            /* ignore in server */
+            // ignored during SSR
           }
         },
         remove(name: string, options: any) {
           try {
             cookieStore.set({ name, value: "", ...options, maxAge: 0 });
           } catch {
-            /* ignore */
+            // ignored during SSR
           }
         },
       },
     }
   );
+
+  return supabase;
 }

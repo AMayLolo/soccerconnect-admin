@@ -1,89 +1,39 @@
-import { getCurrentUser } from "@/utils/auth";
-import Link from "next/link";
+// src/app/protected/layout.tsx
+import { requireUser } from "@/utils/auth";
 import { Toaster } from "react-hot-toast";
-import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "SoccerConnect Admin",
-  description: "Internal moderation console for SoccerConnect",
-};
+export const dynamic = "force-dynamic";
 
 export default async function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
-
-  // pull role from app_metadata first, then user_metadata
-  const roleFromApp = (user as any)?.app_metadata?.role;
-  const roleFromUser = (user as any)?.user_metadata?.role;
-  const role = roleFromApp || roleFromUser || "user";
-
-  // Not signed in? go to login
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Signed in but not admin? also go to login (or could redirect to "/")
-  if (role !== "admin") {
-    redirect("/login");
-  }
+  // This will redirect("/login") on the server if you're not logged in.
+  await requireUser();
 
   return (
-    <html lang="en">
-      <body className="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
-        <header className="border-b bg-white shadow-sm sticky top-0 z-20">
-          <div className="mx-auto max-w-7xl px-6 py-3 flex items-center justify-between">
-            <Link
-              href="/protected"
-              className="text-lg font-semibold text-blue-700 hover:text-blue-900"
-            >
-              SoccerConnect • Admin
-            </Link>
-
-            <nav className="flex items-center gap-6 text-sm font-medium text-gray-700">
-              <Link
-                href="/protected"
-                className="hover:text-blue-600 transition"
-              >
-                Dashboard
-              </Link>
-
-              <Link
-                href="/protected/flagged"
-                className="hover:text-blue-600 transition"
-              >
-                Flagged
-              </Link>
-
-              <Link
-                href="/protected/reports"
-                className="hover:text-blue-600 transition"
-              >
-                Reports
-              </Link>
-
-              <span className="text-gray-500 text-xs">
-                {user?.email ?? "Signed in"}
-              </span>
-
-              <Link
-                href="/api/auth/signout"
-                className="text-red-500 hover:text-red-700"
-              >
-                Logout
-              </Link>
-            </nav>
+    <section className="min-h-screen bg-gray-50 text-gray-900">
+      {/* global toaster for success/error toasts */}
+      <Toaster />
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
+        <header className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-gray-900">
+              SoccerConnect Admin
+            </h1>
+            <p className="text-xs text-gray-500">
+              Internal tools — Clubs, Reports, Reviews
+            </p>
+          </div>
+          <div className="text-xs text-gray-500">
+            {/* later we can add user email here */}
+            Admin
           </div>
         </header>
 
-        <main className="flex-1 mx-auto w-full max-w-7xl px-6 py-8">
-          {children}
-        </main>
-
-        <Toaster position="bottom-right" />
-      </body>
-    </html>
+        <main>{children}</main>
+      </div>
+    </section>
   );
 }

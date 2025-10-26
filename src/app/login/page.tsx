@@ -4,21 +4,24 @@ import { redirect } from "next/navigation";
 import LoginClient from "./LoginClient";
 
 export default async function LoginPage() {
-  const user = await getCurrentUser();
+  // ask the server "who is this?"
+  const { user } = await getCurrentUser();
 
-  // If you're already logged in, just go to dashboard.
+  // already logged in? go to dashboard
   if (user) {
     redirect("/protected");
   }
 
   return (
-    <main className="min-h-screen flex items-start justify-center bg-white text-gray-900 py-16">
-      <div className="w-full max-w-md space-y-6">
-        <div className="rounded border p-4 text-sm leading-relaxed text-gray-700 bg-gray-50 border-gray-300">
-          <strong>SoccerConnect Admin</strong>
-          <div className="text-xs text-gray-500 mt-1">
-            Sign in with your admin credentials.
-          </div>
+    <main className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-800">
+      <div className="w-full max-w-md bg-white p-6 rounded-xl shadow-md space-y-6 border border-gray-200">
+        <div className="text-center">
+          <h1 className="text-xl font-semibold text-gray-900">
+            SoccerConnect Admin
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Sign in with your admin credentials
+          </p>
         </div>
 
         <LoginClient />

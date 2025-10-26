@@ -1,8 +1,10 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
+
+const PROD_DOMAIN = "admin.soccerconnectusa.com"; // <--- important
 
 export async function loginAction(formData: FormData) {
   const email = formData.get("email");
@@ -21,7 +23,6 @@ export async function loginAction(formData: FormData) {
     return { error: "Server not configured" };
   }
 
-  // public client for sign-in
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
       persistSession: false,
@@ -49,44 +50,26 @@ export async function loginAction(formData: FormData) {
 
   const cookieStore = await cookies();
 
-  // We'll overwrite these cookies every login, always.
-  //
-  // KEY CHANGE:
-  // - sameSite: "none" and secure: true works in modern browsers under HTTPS custom domains.
-  //   ("lax" sometimes doesn't get sent on the cross-navigation redirect -> /protected,
-  //    which makes the protected page think you're logged out.)
-  //
-  // - path: "/" so everything (including /protected) can see them.
-  //
-  // - httpOnly: true so JS can't touch them (good).
-  //
-  // NOTE: If you're testing locally on http://localhost this "secure: true"
-  //       means the cookie won't actually stick; that's okay for prod deploy
-  //       debugging. We can branch later if we need localhost as well.
-  cookieStore.set("sb-access-token", accessToken, {
+  // hard-assert persistent, cross-request, same domain
+  const commonCookieOpts = {
     httpOnly: true,
     secure: true,
-    sameSite: "none",
+    sameSite: "none" as const,
     path: "/",
+    domain: PROD_DOMAIN,
+  };
+
+  cookieStore.set("sb-access-token", accessToken, {
+    ...commonCookieOpts,
     maxAge: 60 * 60 * 24, // 1 day
   });
 
   cookieStore.set("sb-refresh-token", refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    path: "/",
+    ...commonCookieOpts,
     maxAge: 60 * 60 * 24 * 7, // 7 days
   });
 
-  // redirect target (if login page had ?redirectTo=...)
-  // BUT -> if that redirect target is /protected, that page will re-check
-  // auth. That's fine IF cookies stuck. If cookies didn't stick, we would
-  // spin; but we just changed cookie policy to fix that.
-  //
-  // We'll still default to /protected.
-  const redirectTo =
-    (formData.get("redirectTo") as string | null) ?? "/protected";
-
-  redirect(redirectTo);
+  // instead of sending you straight to /protected (which may bounce),
+  // send you to an inspector page where we’ll dump what the server sees.
+  redirect("/debug-auth");
 }

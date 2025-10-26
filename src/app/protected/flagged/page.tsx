@@ -1,128 +1,100 @@
-import { createServerClientInstance } from "@/utils/supabase/server";
-import FlaggedTableClient, { FlaggedReport } from "./FlaggedTableClient";
+// src/app/protected/flagged/page.tsx
 
+import { requireUser } from "@/utils/auth";
+import { getServiceClient } from "@/utils/supabase/server";
+import { ResolveFlaggedButton } from "./resolveFlaggedReports";
+
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type PageProps = {
-  searchParams?: {
-    page?: string;
-    limit?: string;
-  };
-};
+export default async function FlaggedPage() {
+  // make sure only logged-in admins can view
+  await requireUser();
 
-export default async function FlaggedPage({ searchParams }: PageProps) {
-  const supabase = await createServerClientInstance();
+  const supabase = getServiceClient();
 
-  // 🔹 Pagination setup
-  const currentPage = Number(searchParams?.page ?? 1);
-  const rowsPerPage = Number(searchParams?.limit ?? 10);
-  const from = (currentPage - 1) * rowsPerPage;
-  const to = from + rowsPerPage - 1;
-
-  // 🔹 Fetch unresolved reports with joined review + club info
-  //
-  // IMPORTANT:
-  // - No "reported_at" (doesn't exist in review_reports)
-  // - We use created_at as the timestamp
-  // - We follow your actual FKs: review_id -> reviews, and inside that club_id -> clubs
-  //
-  const { data, error, count } = await supabase
-    .from("review_reports")
-    .select(
-      `
-        id,
-        reason,
-        resolved,
-        created_at,
-        review_id (
-          id,
-          comment,
-          rating,
-          category,
-          inserted_at,
-          club_id (
-            name
-          )
-        )
-      `,
-      { count: "exact" }
-    )
-    .eq("resolved", false)
-    .order("created_at", { ascending: false })
-    .range(from, to);
+  // pull flagged reports
+  // Adjust table/columns to match your DB schema
+  const { data: reports, error } = await supabase
+    .from("flagged_reports")
+    .select("*")
+    .eq("status", "flagged")
+    .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Error fetching flagged reports:", error.message);
-    return (
-      <div className="p-6 text-red-600">
-        ❌ Failed to load flagged reports: {error.message}
-      </div>
-    );
+    console.error("[FlaggedPage] error loading flagged reports:", error.message);
   }
-
-  // 🔹 Normalize the shape for the client table
-  const normalized: FlaggedReport[] =
-    data?.map((row: any) => ({
-      id: row.id,
-      reason: row.reason ?? "",
-      // we don't have reported_at, so expose created_at as the "reported" timestamp
-      reported_at: row.created_at ?? "",
-      created_at: row.created_at ?? "",
-      resolved: !!row.resolved,
-
-      club_name: row.review_id?.club_id?.name ?? "Unknown Club",
-      comment: row.review_id?.comment ?? "",
-      rating: row.review_id?.rating ?? null,
-      category: row.review_id?.category ?? "",
-    })) ?? [];
-
-  // 🔹 Inline server action used by <FlaggedTableClient /> to trigger refresh
-  async function refreshReports() {
-    "use server";
-    await supabase.from("review_reports").select("id").limit(1);
-  }
-
-  // 🔹 Derived values for header
-  const total = count ?? 0;
-  const startItem = total === 0 ? 0 : from + 1;
-  const endItem = total === 0 ? 0 : Math.min(to + 1, total);
 
   return (
     <main className="p-6 space-y-6">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <header className="flex items-center justify-between">
         <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
-              Flagged Reports
-            </h1>
-            <p className="text-gray-500 text-sm">
-              Unresolved reports requiring moderation
-            </p>
-        </div>
-
-        <div className="text-sm text-gray-500">
-          {total === 0 ? (
-            <span className="text-gray-400">No unresolved reports 🎉</span>
-          ) : (
-            <>
-              Showing{" "}
-              <span className="font-medium text-gray-900">
-                {startItem}-{endItem}
-              </span>{" "}
-              of{" "}
-              <span className="font-medium text-gray-900">{total}</span>{" "}
-              total
-            </>
-          )}
+          <h1 className="text-xl font-semibold text-gray-900">
+            Flagged Reports
+          </h1>
+          <p className="text-sm text-gray-600">
+            Admin moderation queue. Mark items resolved as you review them.
+          </p>
         </div>
       </header>
 
-      <FlaggedTableClient
-        initialReports={normalized}
-        totalCount={total}
-        currentPage={currentPage}
-        rowsPerPage={rowsPerPage}
-        refreshReports={refreshReports}
-      />
+      <section className="bg-white shadow border border-gray-200 rounded-lg overflow-hidden">
+        <table className="min-w-full text-sm text-gray-800">
+          <thead className="bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
+            <tr>
+              <th className="px-4 py-3">ID</th>
+              <th className="px-4 py-3">Club / User</th>
+              <th className="px-4 py-3">Reason</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {(reports ?? []).length === 0 ? (
+              <tr>
+                <td
+                  className="px-4 py-4 text-center text-gray-500"
+                  colSpan={5}
+                >
+                  Nothing is flagged right now 🎉
+                </td>
+              </tr>
+            ) : (
+              reports!.map((r) => (
+                <tr key={r.id}>
+                  <td className="px-4 py-4 font-mono text-xs text-gray-700">
+                    {r.id}
+                  </td>
+
+                  <td className="px-4 py-4">
+                    {/* tweak this for whatever columns you have */}
+                    <div className="text-gray-900 font-medium">
+                      {r.club_name || r.club_id || "—"}
+                    </div>
+                    <div className="text-gray-500 text-xs">
+                      {r.user_email || r.user_id || ""}
+                    </div>
+                  </td>
+
+                  <td className="px-4 py-4 text-gray-800">
+                    {r.reason || r.comment || "(no details)"}
+                  </td>
+
+                  <td className="px-4 py-4">
+                    <span className="inline-block rounded bg-yellow-100 text-yellow-800 text-[10px] font-semibold px-2 py-1 uppercase tracking-wide">
+                      {r.status}
+                    </span>
+                  </td>
+
+                  <td className="px-4 py-4">
+                    <ResolveFlaggedButton reportId={r.id} />
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </section>
     </main>
   );
 }

@@ -1,27 +1,20 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-
-const PROD_DOMAIN = "admin.soccerconnectusa.com"; // <--- important
+import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
 
 export async function loginAction(formData: FormData) {
   const email = formData.get("email");
   const password = formData.get("password");
 
   if (typeof email !== "string" || typeof password !== "string") {
-    console.error("[loginAction] missing email or password");
     return { error: "Missing credentials" };
   }
 
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error("[loginAction] Missing Supabase env vars in production");
-    return { error: "Server not configured" };
-  }
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const DOMAIN = process.env.NEXT_PUBLIC_SITE_URL || "admin.soccerconnectusa.com";
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
@@ -35,42 +28,37 @@ export async function loginAction(formData: FormData) {
     password,
   });
 
-  if (error) {
-    console.error("[loginAction] signIn error:", error.message);
+  if (error || !data.session) {
+    console.error("[loginAction] signIn error:", error?.message);
     return { error: "Invalid email or password" };
-  }
-
-  if (!data.session) {
-    console.error("[loginAction] no session returned");
-    return { error: "Login failed" };
   }
 
   const accessToken = data.session.access_token;
   const refreshToken = data.session.refresh_token;
 
+  // IMPORTANT: Next 16 cookies() is async
   const cookieStore = await cookies();
 
-  // hard-assert persistent, cross-request, same domain
-  const commonCookieOpts = {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none" as const,
-    path: "/",
-    domain: PROD_DOMAIN,
-  };
-
+  // These two cookies are what getCurrentUser() will read
   cookieStore.set("sb-access-token", accessToken, {
-    ...commonCookieOpts,
-    maxAge: 60 * 60 * 24, // 1 day
+    httpOnly: true,
+    secure: true,                // required on HTTPS prod
+    sameSite: "none",            // allows cross-site in prod if needed
+    path: "/",
+    domain: DOMAIN,              // <- make sure this matches your prod host
+    maxAge: 60 * 60,             // 1 hour
   });
 
   cookieStore.set("sb-refresh-token", refreshToken, {
-    ...commonCookieOpts,
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+    domain: DOMAIN,
+    maxAge: 60 * 60 * 24 * 7,    // 7 days
   });
 
-  // instead of sending you straight to /protected (which may bounce),
-  // send you to an inspector page where we’ll dump what the server sees.
+  // ✅ FINAL redirect after login
   redirect("/protected");
-
 }
+

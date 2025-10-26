@@ -4,11 +4,19 @@ import { redirect } from "next/navigation";
 import LoginClient from "./LoginClient";
 
 export default async function LoginPage() {
-  // ask the server "who is this?"
-  const { user } = await getCurrentUser();
+  // getCurrentUser can return either:
+  // - { user: User | null, redirectToLogin: boolean }
+  // - or plain User | null (older shape)
+  const current = await getCurrentUser();
 
-  // already logged in? go to dashboard
-  if (user) {
+  // normalize to a `userObj`
+  const userObj =
+    current && typeof current === "object" && "user" in current
+      ? (current as { user: any }).user
+      : current;
+
+  // if already logged in, go to dashboard
+  if (userObj) {
     redirect("/protected");
   }
 

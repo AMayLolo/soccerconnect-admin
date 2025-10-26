@@ -71,5 +71,6 @@ export async function loginAction(formData: FormData) {
 
   // instead of sending you straight to /protected (which may bounce),
   // send you to an inspector page where we’ll dump what the server sees.
-  redirect("/debug-auth");
+  redirect("/protected");
+
 }

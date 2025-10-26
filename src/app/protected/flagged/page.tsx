@@ -2,7 +2,7 @@
 
 import { requireUser } from "@/utils/auth";
 import { getServiceClient } from "@/utils/supabase/server";
-import { ResolveFlaggedButton } from "./resolveFlaggedReports";
+import { ResolveFlaggedButton } from "./ResolveFlaggedButton";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;

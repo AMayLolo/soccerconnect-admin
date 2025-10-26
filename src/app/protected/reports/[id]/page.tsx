@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { createSupabaseServer } from "@/lib/supabaseServer";
-import { ResolveFlaggedButton } from "../../flagged/resolveFlaggedReports";
+import { ResolveFlaggedButton } from "../../flagged/ResolveFlaggedButton";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;

@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 94, "column": 0}, "map": {"version":3,"sources":["file:///Users/abbylossa/soccerconnect-admin/src/proxy.ts"],"sourcesContent":["import { NextResponse } from \"next/server\";\nimport type { NextRequest } from \"next/server\";\nimport { createMiddlewareClient } from \"@supabase/auth-helpers-nextjs\";\n\nexport async function proxy(req: NextRequest) {\n  const res = NextResponse.next();\n  const supabase = createMiddlewareClient({ req, res });\n\n  const {\n    data: { user },\n    error,\n  } = await supabase.auth.getUser();\n\n  console.log(\n    \"[PROXY]\",\n    \"path=\", req.nextUrl.pathname,\n    \"user=\", user?.email,\n    \"error=\", error?.message\n  );\n\n  // 🔴 DO NOT redirect. Always just continue.\n  return res;\n}\n\nexport const config = {\n  matcher: [\"/login\", \"/protected/:path*\"],\n};\n"],"names":[],"mappings":";;;;;;AAAA;AAEA;;;AAEO,eAAe,MAAM,GAAgB;IAC1C,MAAM,MAAM,8IAAY,CAAC,IAAI;IAC7B,MAAM,WAAW,IAAA,kMAAsB,EAAC;QAAE;QAAK;IAAI;IAEnD,MAAM,EACJ,MAAM,EAAE,IAAI,EAAE,EACd,KAAK,EACN,GAAG,MAAM,SAAS,IAAI,CAAC,OAAO;IAE/B,QAAQ,GAAG,CACT,WACA,SAAS,IAAI,OAAO,CAAC,QAAQ,EAC7B,SAAS,MAAM,OACf,UAAU,OAAO;IAGnB,4CAA4C;IAC5C,OAAO;AACT;AAEO,MAAM,SAAS;IACpB,SAAS;QAAC;QAAU;KAAoB;AAC1C","debugId":null}}]
+}

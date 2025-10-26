@@ -1,6 +1,6 @@
 // src/app/debug-auth/page.tsx
-import { cookies } from "next/headers";
 import { getCurrentUser } from "@/utils/auth";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 

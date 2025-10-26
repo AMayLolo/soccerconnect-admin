@@ -1,12 +1,9 @@
 // src/app/protected/reports/[id]/page.tsx
 
-import { notFound } from "next/navigation";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
-// this was in your code already
 import { createSupabaseServer } from "@/lib/supabaseServer";
-
-// NEW: import the client button component instead of a server function
 import { ResolveFlaggedButton } from "../../flagged/resolveFlaggedReports";
 
 export const dynamic = "force-dynamic";
@@ -23,10 +20,8 @@ type ReportRow = {
 };
 
 async function getReportById(id: string) {
-  // get an authenticated supabase server client
   const supabase = await createSupabaseServer();
 
-  // adjust table/columns to match your schema
   const { data, error } = await supabase
     .from("reports")
     .select(
@@ -64,14 +59,7 @@ export default async function ReportDetailPage({
     notFound();
   }
 
-  const {
-    club_id,
-    club_name,
-    reason,
-    details,
-    status,
-    created_at,
-  } = report;
+  const { club_id, club_name, reason, details, status, created_at } = report;
 
   return (
     <main className="p-6 space-y-6 max-w-2xl">
@@ -138,7 +126,6 @@ export default async function ReportDetailPage({
       </section>
 
       <section className="flex items-center gap-3">
-        {/* Button that calls the resolve flow */}
         <ResolveFlaggedButton reportId={id} />
       </section>
     </main>

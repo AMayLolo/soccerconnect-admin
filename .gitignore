@@ -1,15 +1,44 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# ─────────────────────────────
+# DEPENDENCIES & BUILD OUTPUT
+# ─────────────────────────────
 node_modules/
+.next/
+out/
 
-# Expo
+# ─────────────────────────────
+# EXPO / REACT NATIVE
+# ─────────────────────────────
 .expo/
 dist/
 web-build/
 expo-env.d.ts
+/ios
+/android
 
-# Native
+# ─────────────────────────────
+# SCRAPER / AUTOMATION
+# ─────────────────────────────
+scraper/results/
+scraper/.cache/
+scraper/screenshots/
+
+# ─────────────────────────────
+# SUPABASE / BACKEND SECRETS
+# ─────────────────────────────
+# prevent accidental commits of keys or migrations
+.supabase/
+supabase/.env
+supabase/.env.*
+supabase/config.toml
+backend/.env
+backend/.env.*
+.env
+.env.local
+.env*.local
+
+# ─────────────────────────────
+# NATIVE / PLATFORM FILES
+# ─────────────────────────────
 .kotlin/
 *.orig.*
 *.jks
@@ -18,26 +47,22 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
-# Metro
+# ─────────────────────────────
+# DEBUG / LOGS / TEMP
+# ─────────────────────────────
 .metro-health-check*
-
-# debug
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.tsbuildinfo
 
-# macOS
+# ─────────────────────────────
+# SYSTEM FILES
+# ─────────────────────────────
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
+# ─────────────────────────────
+# EXAMPLES / UNUSED
+# ─────────────────────────────
 app-example
-
-# generated native folders
-/ios
-/android

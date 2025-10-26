@@ -1,86 +1,112 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import * as React from "react";
+import { useState, useTransition } from "react";
+import { loginAction } from "./actions";
 
 export default function LoginClient() {
-  const [email, setEmail] = useState('');
-  const [pw, setPw] = useState('');
-  const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  // controlled inputs
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  async function handleSubmit(e: React.FormEvent) {
+  // ui state
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // server action transition
+  const [isPending, startTransition] = useTransition();
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setErr(null);
-    setLoading(true);
+    setErrorMsg(null); // clear any previous error
 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const formData = new FormData();
+    formData.set("email", email);
+    formData.set("password", password);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password: pw,
+    startTransition(async () => {
+      try {
+        const result = await loginAction(formData);
+
+        // IMPORTANT:
+        // loginAction will either:
+        //   - redirect("/protected") on success (so we never get here)
+        //   - OR return { error: "..." } if it failed validation / auth
+        if (result && "error" in result && result.error) {
+          setErrorMsg(result.error);
+        }
+      } catch (err) {
+        console.error("[LoginClient] Unexpected error:", err);
+        setErrorMsg("Something went wrong logging you in.");
+      }
     });
-
-    setLoading(false);
-
-    if (error) {
-      setErr(error.message);
-      return;
-    }
-
-    // got a session, go to /protected
-    if (data.session) {
-      window.location.href = '/protected';
-    } else {
-      setErr('No session returned.');
-    }
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-sm mx-auto mt-24 border border-gray-200 rounded-lg p-6 shadow-sm"
-    >
-      <h1 className="text-xl font-semibold text-gray-900 mb-4">
-        Admin login
-      </h1>
+    <div className="min-h-screen flex items-center justify-center bg-neutral-950 text-neutral-100 px-4">
+      <div className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900 p-6 shadow-xl">
+        <h1 className="text-xl font-semibold text-white">Sign in</h1>
+        <p className="mt-1 text-sm text-neutral-400">
+          Enter your admin credentials.
+        </p>
 
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        Email
-      </label>
-      <input
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        type="email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        required
-      />
+        {errorMsg && (
+          <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            {errorMsg}
+          </div>
+        )}
 
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        Password
-      </label>
-      <input
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        type="password"
-        value={pw}
-        onChange={e => setPw(e.target.value)}
-        required
-      />
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <div className="space-y-2">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-neutral-200"
+            >
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              required
+              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-neutral-100 placeholder-neutral-500 outline-none ring-0 focus:border-blue-500"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isPending}
+            />
+          </div>
 
-      {err && (
-        <p className="text-sm text-red-600 mb-3">{err}</p>
-      )}
+          <div className="space-y-2">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-neutral-200"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-neutral-100 placeholder-neutral-500 outline-none ring-0 focus:border-blue-500"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isPending}
+            />
+          </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-md bg-blue-600 text-white text-sm font-medium py-2 hover:bg-blue-700 disabled:opacity-50"
-      >
-        {loading ? 'Signing in…' : 'Sign in'}
-      </button>
-    </form>
+          <button
+            type="submit"
+            disabled={isPending}
+            className="w-full rounded-md bg-blue-600 py-2 text-center text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isPending ? "Signing in..." : "Sign In"}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-[11px] text-neutral-600">
+          soccerconnect admin
+        </p>
+      </div>
+    </div>
   );
 }

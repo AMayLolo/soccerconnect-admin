@@ -93,8 +93,6 @@ module.exports = mod;
 "use strict";
 
 __turbopack_context__.s([
-    "config",
-    ()=>config,
     "proxy",
     ()=>proxy
 ]);
@@ -103,22 +101,30 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2
 ;
 ;
 async function proxy(req) {
+    const url = req.nextUrl.pathname;
+    // 1. Allow public stuff with zero Supabase work.
+    const isPublic = url === "/" || url.startsWith("/login") || url.startsWith("/_next") || url === "/favicon.ico";
+    if (isPublic) {
+        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$middleware$5d$__$28$ecmascript$29$__["NextResponse"].next();
+    }
+    // 2. Only now do we try to hit Supabase
     const res = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$middleware$5d$__$28$ecmascript$29$__["NextResponse"].next();
     const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$auth$2d$helpers$2d$nextjs$2f$dist$2f$index$2e$js__$5b$middleware$5d$__$28$ecmascript$29$__["createMiddlewareClient"])({
         req,
         res
     });
-    const { data: { user }, error } = await supabase.auth.getUser();
-    console.log("[PROXY]", "path=", req.nextUrl.pathname, "user=", user?.email, "error=", error?.message);
-    // 🔴 DO NOT redirect. Always just continue.
+    const { data: { user } } = await supabase.auth.getUser();
+    // 3. Protected namespaces start with /protected
+    const isProtected = url.startsWith("/protected");
+    if (isProtected && !user) {
+        // bounce to login (but remember where they were going)
+        const loginUrl = new URL("/login", req.url);
+        loginUrl.searchParams.set("redirectTo", url);
+        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$middleware$5d$__$28$ecmascript$29$__["NextResponse"].redirect(loginUrl);
+    }
+    // 4. otherwise allow through
     return res;
 }
-const config = {
-    matcher: [
-        "/login",
-        "/protected/:path*"
-    ]
-};
 }),
 ];
 

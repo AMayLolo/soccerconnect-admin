@@ -1,84 +1,139 @@
-// admin-web/src/utils/supabase/auth.ts
+// src/utils/auth.ts
+//
+// SERVER-ONLY AUTH HELPERS
+//
+// - Reads sb-access-token / sb-refresh-token from cookies (Next 16 style)
+// - Uses service role key ONLY on the server to validate the user
+// - Gives you getCurrentUser() for "am I logged in?"
+// - Gives you requireUser() for protected routes
+//
+// IMPORTANT: don't import this from Client Components.
 
 import { cookies } from "next/headers";
-import { createClient, type User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
+import { createClient, type User } from "@supabase/supabase-js";
 
-/**
- * Env vars
- * NOTE:
- *  - NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
- *    must be defined in Vercel (we already added those).
- */
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// ----- ENV VARS (typed + runtime check) -----
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
 
-/**
- * We throw early if you're missing config. This helps catch problems
- * during build, not at runtime inside a route.
- */
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   throw new Error(
     "[auth.ts] Missing Supabase env vars. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
   );
 }
 
-/**
- * getCurrentUser()
- *
- * - Reads the `sb-access-token` cookie that we set during loginAction.
- * - Uses the service role key to validate that token with Supabase.
- * - Returns the Supabase user object or null if not logged in.
- *
- * This MUST run on the server (it's using next/headers and service role).
- */
-export async function getCurrentUser(): Promise<User | null> {
-  // cookies() in Next App Router is synchronous, no await
-  const cookieStore = cookies();
-
-  // we wrote these in loginAction
-  const accessToken = cookieStore.get("sb-access-token")?.value;
-
-  if (!accessToken) {
-    // user is not signed in (or cookie expired)
-    return null;
-  }
-
-  // admin client using service role. We disable session persistence because
-  // we're manually passing the accessToken.
-  const adminClient = createClient(SUPABASE_URL!, SERVICE_ROLE_KEY!, {
+// Create a *server-only* supabase client that can validate tokens.
+// NOTE: SERVICE_ROLE_KEY never goes to browser.
+function getServiceClient() {
+  return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: {
       persistSession: false,
+      autoRefreshToken: false,
     },
   });
-
-  // validate that token with Supabase and get user info
-  const {
-    data: { user },
-    error,
-  } = await adminClient.auth.getUser(accessToken);
-
-  if (error) {
-    console.error("[getCurrentUser] error:", error.message);
-    return null;
-  }
-
-  return user ?? null;
 }
 
-/**
- * requireUser()
- *
- * - Call this at the top of any server component/page
- *   that should be protected.
- * - If there's no valid user, we redirect to /login.
- * - Otherwise we return the user so the page can use it.
- */
+// Helper to read the auth cookies from Next 16's async cookies()
+async function readAuthCookies() {
+  // cookies() is async in Next 16, so we MUST await it
+  const cookieStore = await cookies();
+
+  // In prod we'll have two cookies we set at login
+  //   sb-access-token
+  //   sb-refresh-token
+  //
+  // BUT on localhost, Next dev tools will sometimes try to
+  // read+JSON.parse preview cookies (like "base64-..."),
+  // which can explode. We'll defensively guard against that.
+
+  const getCookie = (name: string): string | undefined => {
+    try {
+      const c = cookieStore.get(name);
+      // c is { name, value, ... } or undefined
+      if (!c) return undefined;
+      return c.value;
+    } catch (err) {
+      console.warn(
+        `[auth.ts] failed to read cookie "${name}":`,
+        (err as Error).message
+      );
+      return undefined;
+    }
+  };
+
+  const accessToken = getCookie("sb-access-token");
+  const refreshToken = getCookie("sb-refresh-token");
+
+  return { accessToken, refreshToken };
+}
+
+// Public helper: are they logged in? (does NOT redirect)
+// ----------------------------------------------------------------
+export async function getCurrentUser(): Promise<{
+  user: User | null;
+  redirectToLogin: boolean;
+}> {
+  const { accessToken, refreshToken } = await readAuthCookies();
+
+  if (!accessToken || !refreshToken) {
+    // no session cookies at all
+    return {
+      user: null,
+      redirectToLogin: true,
+    };
+  }
+
+  const supabaseServer = getServiceClient();
+
+  // 1. Try to verify the access token against Supabase
+  const { data: userResult, error: userErr } =
+    await supabaseServer.auth.getUser(accessToken);
+
+  if (userErr || !userResult.user) {
+    // Access token might be expired, try refresh flow
+    const { data: refreshed, error: refreshErr } =
+      await supabaseServer.auth.refreshSession({
+        refresh_token: refreshToken,
+      });
+
+    if (refreshErr || !refreshed.session?.user) {
+      // refresh also failed -> no valid session
+      return {
+        user: null,
+        redirectToLogin: true,
+      };
+    }
+
+    // refresh succeeded -> the refreshed.session has new tokens,
+    // BUT: we do NOT silently rewrite cookies here.
+    // Why? We're in a helper that might be called during render,
+    // and setCookie() in the middle of a render causes weirdness.
+    //
+    // Instead we just treat them as logged in for now.
+    return {
+      user: refreshed.session.user,
+      redirectToLogin: false,
+    };
+  }
+
+  // access token was valid
+  return {
+    user: userResult.user,
+    redirectToLogin: false,
+  };
+}
+
+// Strict helper for protected routes/pages
+// Call this at the top of /protected/... pages.
+// If not logged in, it will redirect("/login") on the server.
+// ----------------------------------------------------------------
 export async function requireUser(): Promise<User> {
-  const user = await getCurrentUser();
-  if (!user) {
-    // 307 to /login (Next.js redirect throws to trigger navigation)
+  const { user, redirectToLogin } = await getCurrentUser();
+
+  if (redirectToLogin || !user) {
     redirect("/login");
   }
+
   return user;
 }

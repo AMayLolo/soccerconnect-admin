@@ -21,7 +21,7 @@ export async function loginAction(formData: FormData) {
     return { error: "Server not configured" };
   }
 
-  // normal public client for auth
+  // Public supabase client just for sign-in
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
       persistSession: false,
@@ -44,31 +44,31 @@ export async function loginAction(formData: FormData) {
     return { error: "Login failed" };
   }
 
-  // pull tokens out of session
   const accessToken = data.session.access_token;
   const refreshToken = data.session.refresh_token;
 
-  // set cookies so that getCurrentUser() can read them on the server
-  const cookieStore = await cookies();
+  // write cookies
+  const cookieStore = cookies();
 
-  // VERY IMPORTANT: secure: true because you're on https in prod
+  // in prod we need secure cookies, in dev (http://localhost) we can't use secure:true
+  const isProd = process.env.NEXT_PUBLIC_SITE_URL?.startsWith("https://");
+
   cookieStore.set("sb-access-token", accessToken, {
     httpOnly: true,
-    secure: true,
+    secure: isProd,
     sameSite: "lax",
     path: "/",
-    // optional: maxAge in seconds (e.g. 1 day)
-    maxAge: 60 * 60 * 24,
+    maxAge: 60 * 60 * 24, // 1 day
   });
 
   cookieStore.set("sb-refresh-token", refreshToken, {
     httpOnly: true,
-    secure: true,
+    secure: isProd,
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7, // refresh can live longer
+    maxAge: 60 * 60 * 24 * 7, // 7 days
   });
 
-  // if we get here, you're logged in
+  // success -> go to dashboard
   redirect("/protected");
 }

@@ -1,1 +1,83 @@
-[00:00:00.423] Server  LOG      ✓ Ready in 314ms
+[00:00:00.588] Server  LOG      ✓ Ready in 451ms
+[00:00:05.071] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:05.080] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:05.080] Server  LOG     [PROXY] "path=" "/protected" "user=" undefined "error=" "Auth session missing!"
+[00:00:05.754] Server  WARN    Error: Route "/protected" used `cookies().get`. `cookies()` returns a Promise and must be unwrapped with `await` or `React.use()` before accessing its properties. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+[00:00:05.758] Server  ERROR    ⨯ TypeError: cookieStore.get is not a function
+[00:00:05.813] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:05.822] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:05.822] Server  LOG     [PROXY] "path=" "/login" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.084] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.092] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.092] Server  LOG     [PROXY] "path=" "/protected" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.098] Server  WARN    Error: Route "/protected" used `cookies().get`. `cookies()` returns a Promise and must be unwrapped with `await` or `React.use()` before accessing its properties. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+[00:00:06.101] Server  ERROR    ⨯ TypeError: cookieStore.get is not a function
+[00:00:06.122] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.129] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.129] Server  LOG     [PROXY] "path=" "/login" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.154] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.163] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.163] Server  LOG     [PROXY] "path=" "/protected" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.168] Server  WARN    Error: Route "/protected" used `cookies().get`. `cookies()` returns a Promise and must be unwrapped with `await` or `React.use()` before accessing its properties. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+[00:00:06.170] Server  ERROR    ⨯ TypeError: cookieStore.get is not a function
+[00:00:06.193] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.202] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.203] Server  LOG     [PROXY] "path=" "/login" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.232] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.239] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.239] Server  LOG     [PROXY] "path=" "/protected" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.245] Server  WARN    Error: Route "/protected" used `cookies().get`. `cookies()` returns a Promise and must be unwrapped with `await` or `React.use()` before accessing its properties. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+[00:00:06.247] Server  ERROR    ⨯ TypeError: cookieStore.get is not a function
+[00:00:06.268] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.274] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.274] Server  LOG     [PROXY] "path=" "/login" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.298] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.305] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.305] Server  LOG     [PROXY] "path=" "/protected" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.311] Server  WARN    Error: Route "/protected" used `cookies().get`. `cookies()` returns a Promise and must be unwrapped with `await` or `React.use()` before accessing its properties. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+[00:00:06.313] Server  ERROR    ⨯ TypeError: cookieStore.get is not a function
+[00:00:06.334] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.342] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.342] Server  LOG     [PROXY] "path=" "/login" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.366] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.375] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.375] Server  LOG     [PROXY] "path=" "/protected" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.379] Server  WARN    Error: Route "/protected" used `cookies().get`. `cookies()` returns a Promise and must be unwrapped with `await` or `React.use()` before accessing its properties. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+[00:00:06.381] Server  ERROR    ⨯ TypeError: cookieStore.get is not a function
+[00:00:06.401] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.407] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.407] Server  LOG     [PROXY] "path=" "/login" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.431] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.439] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.439] Server  LOG     [PROXY] "path=" "/protected" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.443] Server  WARN    Error: Route "/protected" used `cookies().get`. `cookies()` returns a Promise and must be unwrapped with `await` or `React.use()` before accessing its properties. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+[00:00:06.445] Server  ERROR    ⨯ TypeError: cookieStore.get is not a function
+[00:00:06.463] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.469] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.469] Server  LOG     [PROXY] "path=" "/login" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.493] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.502] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.502] Server  LOG     [PROXY] "path=" "/protected" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.506] Server  WARN    Error: Route "/protected" used `cookies().get`. `cookies()` returns a Promise and must be unwrapped with `await` or `React.use()` before accessing its properties. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+[00:00:06.508] Server  ERROR    ⨯ TypeError: cookieStore.get is not a function
+[00:00:06.529] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.535] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.535] Server  LOG     [PROXY] "path=" "/login" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.558] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.565] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.565] Server  LOG     [PROXY] "path=" "/protected" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.569] Server  WARN    Error: Route "/protected" used `cookies().get`. `cookies()` returns a Promise and must be unwrapped with `await` or `React.use()` before accessing its properties. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+[00:00:06.571] Server  ERROR    ⨯ TypeError: cookieStore.get is not a function
+[00:00:06.591] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.600] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.600] Server  LOG     [PROXY] "path=" "/login" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.621] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.630] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.630] Server  LOG     [PROXY] "path=" "/protected" "user=" undefined "error=" "Auth session missing!"
+[00:00:06.634] Server  WARN    Error: Route "/protected" used `cookies().get`. `cookies()` returns a Promise and must be unwrapped with `await` or `React.use()` before accessing its properties. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+[00:00:06.636] Server  ERROR    ⨯ TypeError: cookieStore.get is not a function
+[00:00:06.655] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.661] Server  WARN    Failed to parse cookie string: SyntaxError: Unexpected token 'b', "base64-eyJ"... is not valid JSON
+[00:00:06.661] Server  LOG     [PROXY] "path=" "/login" "user=" undefined "error=" "Auth session missing!"
+[00:03:43.220] Server  LOG      ✓ Compiled in 105ms
+[00:03:44.533] Server  LOG      ✓ Compiled in 48ms

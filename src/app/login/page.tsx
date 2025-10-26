@@ -4,15 +4,9 @@ import { redirect } from "next/navigation";
 import LoginClient from "./LoginClient";
 
 export default async function LoginPage() {
-  let user = null;
+  const user = await getCurrentUser();
 
-  try {
-    user = await getCurrentUser();
-  } catch (err: any) {
-    console.warn("[LoginPage] Could not fetch current user:", err.message || err);
-  }
-
-  // If logged in, redirect to dashboard
+  // If you're already logged in, just go to dashboard.
   if (user) {
     redirect("/protected");
   }

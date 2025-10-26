@@ -1,0 +1,60 @@
+# ─────────────────────────────
+# GLOBAL SETTINGS
+# ─────────────────────────────
+
+# Enforce consistent LF line endings across all environments
+* text=auto eol=lf
+
+# Ensure that shell scripts and Node executables retain executable bit
+*.sh text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+
+# Keep JSON, YAML, ENV, and config files clean
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.env text eol=lf
+*.toml text eol=lf
+
+# Keep markdown and documentation files normalized
+*.md text eol=lf
+*.txt text eol=lf
+
+# ─────────────────────────────
+# BINARY FILES (no conversion)
+# ─────────────────────────────
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.mov binary
+*.mp4 binary
+*.mp3 binary
+
+# ─────────────────────────────
+# PROJECT-SPECIFIC SETTINGS
+# ─────────────────────────────
+
+# Ignore line ending changes for lock files
+package-lock.json -diff
+yarn.lock -diff
+pnpm-lock.yaml -diff
+
+# Keep your Next.js and scraper outputs treated as text but not auto-normalized
+.next/** -diff
+out/** -diff
+
+# ─────────────────────────────
+# SUPABASE / BACKEND CONFIGS
+# ─────────────────────────────
+supabase/** text eol=lf
+backend/** text eol=lf

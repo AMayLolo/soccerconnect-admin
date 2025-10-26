@@ -1,11 +1,18 @@
+// src/app/login/page.tsx
 import { getCurrentUser } from "@/utils/auth";
 import { redirect } from "next/navigation";
 import LoginClient from "./LoginClient";
 
 export default async function LoginPage() {
-  const user = await getCurrentUser();
+  let user = null;
 
-  // If you're already logged in, just go to dashboard.
+  try {
+    user = await getCurrentUser();
+  } catch (err: any) {
+    console.warn("[LoginPage] Could not fetch current user:", err.message || err);
+  }
+
+  // If logged in, redirect to dashboard
   if (user) {
     redirect("/protected");
   }

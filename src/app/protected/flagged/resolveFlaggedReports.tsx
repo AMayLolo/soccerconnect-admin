@@ -1,59 +1,53 @@
-// src/app/protected/flagged/resolveFlaggedReports.ts
-"use server";
+// src/app/protected/flagged/resolveFlaggedReports.tsx
 
-import { requireUser } from "@/utils/auth";
-import { getServiceClient } from "@/utils/supabase/server";
+// This file defines:
+// 1. a server action (`handleResolve`) that marks a report resolved in Supabase
+// 2. a small client component <ResolveFlaggedButton /> that renders the form
+//
+// This pattern (server action + client wrapper) is compatible with Next.js 16.
+
 import { revalidatePath } from "next/cache";
+import { createSupabaseServer } from "@/lib/supabaseServer";
 
-/**
- * Server Action: mark a flagged report as resolved.
- * Called from the form in the UI.
- */
+// --- 1. SERVER ACTION -------------------------------------------------
 export async function handleResolve(formData: FormData) {
-  // auth guard: only logged-in admins can do this
-  await requireUser();
+  "use server";
 
   const reportId = formData.get("report_id");
-  if (!reportId || typeof reportId !== "string") {
-    throw new Error("Missing report_id");
+  if (typeof reportId !== "string") {
+    console.error("[handleResolve] missing report_id in formData");
+    return;
   }
 
-  const supabase = getServiceClient();
+  const supabase = await createSupabaseServer();
 
-  // Update that row in whatever table holds flagged reports.
-  // I'm guessing table name `flagged_reports`, status column `status`.
-  // Adjust to match your schema.
+  // update report to resolved
   const { error } = await supabase
-    .from("flagged_reports")
+    .from("reports")
     .update({ status: "resolved" })
     .eq("id", reportId);
 
   if (error) {
     console.error("[handleResolve] supabase error:", error.message);
-    throw new Error("Failed to resolve report");
+  } else {
+    console.log(`[handleResolve] report ${reportId} marked resolved`);
   }
 
-  // Refresh the /protected/flagged page so the row updates
+  // Revalidate flagged list page + this report page (so UI updates in prod)
   revalidatePath("/protected/flagged");
+  revalidatePath(`/protected/reports/${reportId}`);
 }
 
-/**
- * Small button+form you can render in each row.
- * This is still a Server Component because it's just JSX
- * with a <form action={handleResolve}>; Next can handle that.
- *
- * If Next ever yells about "Server Actions cannot be passed
- * to Client Components", then we convert this to a client
- * component that calls a dedicated server action. But this
- * should be fine in 16.
- */
+// --- 2. CLIENT COMPONENT BUTTON ---------------------------------------
+"use client";
+
 export function ResolveFlaggedButton({ reportId }: { reportId: string }) {
   return (
     <form action={handleResolve}>
       <input type="hidden" name="report_id" value={reportId} />
       <button
         type="submit"
-        className="text-xs px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700"
+        className="px-3 py-2 rounded bg-green-600 text-white text-sm font-medium hover:bg-green-700"
       >
         Mark Resolved
       </button>

@@ -1,54 +1,39 @@
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/utils/auth";
-import { createClient } from "@supabase/supabase-js";
+// src/app/protected/clubs/page.tsx
+import { requireUser } from "@/utils/auth";
+import { createServerClientInstance } from "@/utils/supabase/server"; // this is your RLS-safe server supabase (anon key w/ cookies)
+import Link from "next/link";
 
-type ClubRecord = {
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+type Club = {
   id: string;
   club_name: string | null;
   city: string | null;
   state: string | null;
   website_url: string | null;
-  competition_level: string | null;
   last_scraped_at: string | null;
 };
 
-async function getTexasClubs(): Promise<ClubRecord[]> {
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+async function getClubs(): Promise<Club[]> {
+  // this should be the same helper you already had in protected/page.tsx
+  // which basically does:
+  //   const supabase = await createServerClientInstance();
+  //   const { data } = await supabase.from("clubs").select("*").limit(...)
+  //
+  // NOTE: we are not using the service role key here. This is fine for listing clubs
+  // if your RLS policy allows read access to authenticated users.
 
-  if (!SUPABASE_URL || !SERVICE_ROLE) {
-    throw new Error(
-      "Missing Supabase env vars. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
-    );
-  }
-
-  // Server-side Supabase client using service role
-  const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-
-  // grab only Texas clubs for now
-  const { data, error } = await adminClient
+  const supabase = await createServerClientInstance();
+  const { data, error } = await supabase
     .from("clubs")
     .select(
-      `
-        id,
-        club_name,
-        city,
-        state,
-        website_url,
-        competition_level,
-        last_scraped_at
-      `
+      "id, club_name, city, state, website_url, last_scraped_at"
     )
-    .eq("state", "TX")
     .order("club_name", { ascending: true });
 
   if (error) {
-    console.error("[clubs] error loading clubs:", error.message);
+    console.error("[clubs/page] supabase clubs error:", error.message);
     return [];
   }
 
@@ -56,86 +41,100 @@ async function getTexasClubs(): Promise<ClubRecord[]> {
 }
 
 export default async function ClubsPage() {
-  // 1. gate this route
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
+  // 1. force auth – if not logged in, this will redirect("/login")
+  const user = await requireUser();
 
-  // 2. load data
-  const clubs = await getTexasClubs();
+  // 2. fetch club data
+  const clubs = await getClubs();
 
-  // 3. render ui
   return (
     <main className="p-6 space-y-6">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Texas Clubs ({clubs.length})
-        </h1>
-        <p className="text-sm text-gray-500">
-          Pulled from NTX, CAYSA, ECNL scrape. You’re seeing TX only.
-        </p>
+      <header className="flex items-start justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Texas Clubs
+          </h1>
+          <p className="text-sm text-gray-500">
+            {user.email
+              ? `Signed in as ${user.email}`
+              : "Signed in"}
+            . Showing {clubs.length} clubs in Supabase.
+          </p>
+        </div>
+
+        <Link
+          href="/protected"
+          className="text-sm text-blue-600 hover:underline"
+        >
+          ← Back to Dashboard
+        </Link>
       </header>
 
-      <section className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-medium border-b border-gray-200">
+      {/* table / list */}
+      <section className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <thead className="bg-gray-50 text-left">
             <tr>
-              <th className="px-4 py-3">Club</th>
-              <th className="px-4 py-3">City</th>
-              <th className="px-4 py-3">Level</th>
-              <th className="px-4 py-3">Website</th>
-              <th className="px-4 py-3 whitespace-nowrap">Last scraped</th>
+              <th className="px-4 py-2 font-medium text-gray-700">Club</th>
+              <th className="px-4 py-2 font-medium text-gray-700">City</th>
+              <th className="px-4 py-2 font-medium text-gray-700">State</th>
+              <th className="px-4 py-2 font-medium text-gray-700">
+                Website
+              </th>
+              <th className="px-4 py-2 font-medium text-gray-700 whitespace-nowrap">
+                Last Scraped
+              </th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-100 bg-white">
             {clubs.length === 0 ? (
               <tr>
                 <td
                   colSpan={5}
-                  className="px-4 py-8 text-center text-gray-400 text-sm"
+                  className="px-4 py-8 text-center text-gray-500"
                 >
                   No clubs found.
                 </td>
               </tr>
             ) : (
               clubs.map((club) => (
-                <tr key={club.id} className="hover:bg-gray-50/60">
-                  <td className="px-4 py-3 font-medium text-gray-900">
+                <tr key={club.id ?? club.club_name}>
+                  {/* Club name */}
+                  <td className="px-4 py-3 text-gray-900 font-medium">
                     {club.club_name || "—"}
                   </td>
+
+                  {/* City */}
                   <td className="px-4 py-3 text-gray-700">
                     {club.city || "—"}
                   </td>
+
+                  {/* State */}
                   <td className="px-4 py-3 text-gray-700">
-                    {club.competition_level || "—"}
+                    {club.state || "—"}
                   </td>
-                  <td className="px-4 py-3 text-blue-600 underline">
+
+                  {/* Website */}
+                  <td className="px-4 py-3">
                     {club.website_url ? (
                       <a
-                        href={
-                          club.website_url.startsWith("http")
-                            ? club.website_url
-                            : `https://${club.website_url}`
-                        }
+                        href={club.website_url}
                         target="_blank"
                         rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline break-all"
                       >
-                        {club.website_url.replace(/^https?:\/\//, "")}
+                        {club.website_url}
                       </a>
                     ) : (
                       <span className="text-gray-400">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
+
+                  {/* Last scraped */}
+                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
                     {club.last_scraped_at
-                      ? new Date(club.last_scraped_at).toLocaleString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                      ? new Date(club.last_scraped_at).toLocaleString()
                       : "—"}
                   </td>
                 </tr>

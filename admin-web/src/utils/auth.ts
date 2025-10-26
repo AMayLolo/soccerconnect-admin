@@ -1,9 +1,19 @@
 // src/utils/auth.ts
-// server-only helpers for auth
+//
+// SERVER-ONLY AUTH HELPERS
+//
+// - Reads sb-access-token / sb-refresh-token from cookies (Next 16 style)
+// - Uses service role key ONLY on the server to validate the user
+// - Gives you getCurrentUser() for "am I logged in?"
+// - Gives you requireUser() for protected routes
+//
+// IMPORTANT: don't import this from Client Components.
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createClient, type User } from "@supabase/supabase-js";
 
+// ----- ENV VARS (typed + runtime check) -----
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
 
@@ -13,13 +23,8 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   );
 }
 
-/**
- * We only ever call this on the server. It uses the service role key so it can
- * validate any user's token.
- *
- * IMPORTANT: SERVICE ROLE KEY MUST NEVER SHIP TO THE BROWSER.
- * Keep this file server-only (no "use client").
- */
+// Create a *server-only* supabase client that can validate tokens.
+// NOTE: SERVICE_ROLE_KEY never goes to browser.
 function getServiceClient() {
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: {
@@ -29,46 +34,106 @@ function getServiceClient() {
   });
 }
 
-/**
- * Get the currently logged-in user (or null if not logged in).
- *
- * Reads the auth cookies we set during login, validates them with Supabase,
- * and returns the user.
- */
-export async function getCurrentUser(): Promise<User | null> {
-  /**
-   * cookies() is typed weirdly in Next.js 16 (Promise<ReadonlyRequestCookies>)
-   * but at runtime it's sync and has get(name).value.
-   *
-   * We'll cast it to something with a .get method to fix both TS and runtime.
-   */
-  const cookieStore = (cookies() as unknown) as {
-    get(name: string):
-      | {
-          value: string;
-        }
-      | undefined;
+// Helper to read the auth cookies from Next 16's async cookies()
+async function readAuthCookies() {
+  // cookies() is async in Next 16, so we MUST await it
+  const cookieStore = await cookies();
+
+  // In prod we'll have two cookies we set at login
+  //   sb-access-token
+  //   sb-refresh-token
+  //
+  // BUT on localhost, Next dev tools will sometimes try to
+  // read+JSON.parse preview cookies (like "base64-..."),
+  // which can explode. We'll defensively guard against that.
+
+  const getCookie = (name: string): string | undefined => {
+    try {
+      const c = cookieStore.get(name);
+      // c is { name, value, ... } or undefined
+      if (!c) return undefined;
+      return c.value;
+    } catch (err) {
+      console.warn(
+        `[auth.ts] failed to read cookie "${name}":`,
+        (err as Error).message
+      );
+      return undefined;
+    }
   };
 
-  const accessToken = cookieStore.get("sb-access-token")?.value;
-  const refreshToken = cookieStore.get("sb-refresh-token")?.value;
+  const accessToken = getCookie("sb-access-token");
+  const refreshToken = getCookie("sb-refresh-token");
+
+  return { accessToken, refreshToken };
+}
+
+// Public helper: are they logged in? (does NOT redirect)
+// ----------------------------------------------------------------
+export async function getCurrentUser(): Promise<{
+  user: User | null;
+  redirectToLogin: boolean;
+}> {
+  const { accessToken, refreshToken } = await readAuthCookies();
 
   if (!accessToken || !refreshToken) {
-    return null;
+    // no session cookies at all
+    return {
+      user: null,
+      redirectToLogin: true,
+    };
   }
 
-  // now validate the access token with Supabase using the service role key
-  const adminClient = getServiceClient();
+  const supabaseServer = getServiceClient();
 
-  // We can call getUser() with the bearer token by manually injecting Authorization
-  // into the fetch that supabase uses under the hood. Easiest way is to hit the auth endpoint directly.
-  // But supabase-js doesn't expose a "getUserFromToken" helper, so we do this:
-  const { data, error } = await adminClient.auth.getUser(accessToken);
+  // 1. Try to verify the access token against Supabase
+  const { data: userResult, error: userErr } =
+    await supabaseServer.auth.getUser(accessToken);
 
-  if (error) {
-    console.error("[getCurrentUser] getUser error:", error.message);
-    return null;
+  if (userErr || !userResult.user) {
+    // Access token might be expired, try refresh flow
+    const { data: refreshed, error: refreshErr } =
+      await supabaseServer.auth.refreshSession({
+        refresh_token: refreshToken,
+      });
+
+    if (refreshErr || !refreshed.session?.user) {
+      // refresh also failed -> no valid session
+      return {
+        user: null,
+        redirectToLogin: true,
+      };
+    }
+
+    // refresh succeeded -> the refreshed.session has new tokens,
+    // BUT: we do NOT silently rewrite cookies here.
+    // Why? We're in a helper that might be called during render,
+    // and setCookie() in the middle of a render causes weirdness.
+    //
+    // Instead we just treat them as logged in for now.
+    return {
+      user: refreshed.session.user,
+      redirectToLogin: false,
+    };
   }
 
-  return data.user ?? null;
+  // access token was valid
+  return {
+    user: userResult.user,
+    redirectToLogin: false,
+  };
+}
+
+// Strict helper for protected routes/pages
+// Call this at the top of /protected/... pages.
+// If not logged in, it will redirect("/login") on the server.
+// ----------------------------------------------------------------
+export async function requireUser(): Promise<User> {
+  const { user, redirectToLogin } = await getCurrentUser();
+
+  if (redirectToLogin || !user) {
+    redirect("/login");
+  }
+
+  return user;
 }

@@ -1,90 +1,92 @@
 "use server";
 
-import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-// We use the public anon key here because this runs as the "user"
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error(
-    "[login/actions.ts] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY"
-  );
-}
-
-// Helper: build a Supabase client that acts like the browser client,
-// but we're on the server so we can do it in a Server Action.
-function getPublicClient() {
-  return createClient(SUPABASE_URL as string, SUPABASE_ANON_KEY as string, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-}
-
-// This is called by the LoginClient form submit
 export async function loginAction(formData: FormData) {
   const email = formData.get("email");
   const password = formData.get("password");
 
   if (typeof email !== "string" || typeof password !== "string") {
-    console.error("[loginAction] Missing email or password");
-    return { error: "Missing email or password." };
+    console.error("[loginAction] missing email or password");
+    return { error: "Missing credentials" };
   }
 
-  const supabase = getPublicClient();
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Step 1: sign in with Supabase
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error("[loginAction] Missing Supabase env vars in production");
+    return { error: "Server not configured" };
+  }
+
+  // public client for sign-in
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
   if (error) {
-    console.error("[loginAction] signInWithPassword error:", error.message);
-    return { error: "Invalid email or password." };
+    console.error("[loginAction] signIn error:", error.message);
+    return { error: "Invalid email or password" };
   }
 
   if (!data.session) {
-    console.error("[loginAction] No session returned from Supabase");
-    return { error: "Login failed. No session." };
+    console.error("[loginAction] no session returned");
+    return { error: "Login failed" };
   }
 
-  // pull tokens out of session
   const accessToken = data.session.access_token;
   const refreshToken = data.session.refresh_token;
 
-  if (!accessToken || !refreshToken) {
-    console.error("[loginAction] Supabase session missing tokens");
-    return { error: "Login failed (no tokens)." };
-  }
-
-  // Step 2: write the tokens into HTTP-only cookies so
-  // getCurrentUser() / requireUser() can read them later
-  //
-  // Next 16: cookies() must be awaited.
   const cookieStore = await cookies();
 
-  // keep these aligned with utils/auth.ts's readAuthCookies()
+  // We'll overwrite these cookies every login, always.
+  //
+  // KEY CHANGE:
+  // - sameSite: "none" and secure: true works in modern browsers under HTTPS custom domains.
+  //   ("lax" sometimes doesn't get sent on the cross-navigation redirect -> /protected,
+  //    which makes the protected page think you're logged out.)
+  //
+  // - path: "/" so everything (including /protected) can see them.
+  //
+  // - httpOnly: true so JS can't touch them (good).
+  //
+  // NOTE: If you're testing locally on http://localhost this "secure: true"
+  //       means the cookie won't actually stick; that's okay for prod deploy
+  //       debugging. We can branch later if we need localhost as well.
   cookieStore.set("sb-access-token", accessToken, {
     httpOnly: true,
-    secure: true, // must be true in prod HTTPS, fine in local dev too
-    sameSite: "lax",
+    secure: true,
+    sameSite: "none",
     path: "/",
-    maxAge: 60 * 60 * 1, // 1 hour for access token
+    maxAge: 60 * 60 * 24, // 1 day
   });
 
   cookieStore.set("sb-refresh-token", refreshToken, {
     httpOnly: true,
     secure: true,
-    sameSite: "lax",
+    sameSite: "none",
     path: "/",
     maxAge: 60 * 60 * 24 * 7, // 7 days
   });
 
-  // Step 3: go to the dashboard
-  redirect("/protected");
+  // redirect target (if login page had ?redirectTo=...)
+  // BUT -> if that redirect target is /protected, that page will re-check
+  // auth. That's fine IF cookies stuck. If cookies didn't stick, we would
+  // spin; but we just changed cookie policy to fix that.
+  //
+  // We'll still default to /protected.
+  const redirectTo =
+    (formData.get("redirectTo") as string | null) ?? "/protected";
+
+  redirect(redirectTo);
 }

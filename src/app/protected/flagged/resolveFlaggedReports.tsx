@@ -1,9 +1,9 @@
 // src/app/protected/flagged/resolveFlaggedReports.ts
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { getServiceClient } from "@/utils/supabase/server";
 import { requireUser } from "@/utils/auth";
+import { getServiceClient } from "@/utils/supabase/server";
+import { revalidatePath } from "next/cache";
 
 /**
  * Server Action: mark a flagged report as resolved.

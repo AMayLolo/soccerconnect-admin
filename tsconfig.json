@@ -39,7 +39,7 @@
     "next-env.d.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
-  ],
+, "proxy.ts"  ],
   "exclude": [
     "node_modules"
   ]

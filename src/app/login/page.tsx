@@ -3,12 +3,22 @@ import { getCurrentUser } from "@/utils/auth";
 import { redirect } from "next/navigation";
 import LoginClient from "./LoginClient";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined };
+}) {
+  // where should we send them AFTER login?
+  const redirectToRaw = searchParams?.redirectTo;
+  const redirectTo =
+    (Array.isArray(redirectToRaw) ? redirectToRaw[0] : redirectToRaw) ||
+    "/protected";
+
   const user = await getCurrentUser();
 
-  // already logged in? go to dashboard
+  // If we are DEFINITELY logged in already, skip the login form.
   if (user) {
-    redirect("/protected");
+    redirect(redirectTo);
   }
 
   return (
@@ -21,6 +31,7 @@ export default async function LoginPage() {
           </div>
         </div>
 
+        {/* Client-side form handles the actual sign-in and cookie setting */}
         <LoginClient />
       </div>
     </main>

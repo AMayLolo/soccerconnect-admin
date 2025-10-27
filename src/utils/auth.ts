@@ -1,73 +1,66 @@
 // src/utils/auth.ts
-import { cookies } from "next/headers";
+/**
+ * Server-side auth helpers for Next.js app-router.
+ *
+ * Exports:
+ *  - getCurrentUser(): returns Supabase user object or null
+ *  - requireCurrentUser(): throws redirect to /login if no user (useful in server actions/pages)
+ *
+ * This implementation uses your project helper `createServerClientInstance()`
+ * which should create a Supabase server client bound to the incoming request cookies.
+ *
+ * If your helper lives in a different path, update the import below.
+ */
+
 import { redirect } from "next/navigation";
-import { createClient, type User } from "@supabase/supabase-js";
+import { createServerClientInstance } from "@/utils/supabase/server";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// You can optionally type the user as SupabaseUser if you have @supabase/supabase-js types.
+type SupabaseUser = any;
 
-// server-only supabase client using service role
-function getServiceClient() {
-  return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-}
+/**
+ * Return currently authenticated user (server-side).
+ * - Uses createServerClientInstance() which should be implemented to read cookies
+ *   and create a Supabase server client (see your existing project helper).
+ *
+ * Returns user object or null.
+ */
+export async function getCurrentUser(): Promise<SupabaseUser | null> {
+  try {
+    const supabase = await createServerClientInstance();
 
-// read auth cookies in Next 16
-async function readAuthCookies() {
-  const cookieStore = await cookies();
+    // Supabase v2: use auth.getUser()
+    // Response shape: { data: { user }, error }
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-  const safeGet = (name: string): string | undefined => {
-    try {
-      const c = cookieStore.get(name);
-      return c?.value;
-    } catch {
-      return undefined;
+    if (error) {
+      // If token expired or other auth error, treat as not logged in
+      console.warn("getCurrentUser supabase.auth.getUser error:", error.message);
+      return null;
     }
-  };
 
-  return {
-    accessToken: safeGet("sb-access-token"),
-    refreshToken: safeGet("sb-refresh-token"),
-  };
-}
+    if (!user) return null;
 
-// are they logged in?
-export async function getCurrentUser(): Promise<User | null> {
-  const { accessToken, refreshToken } = await readAuthCookies();
-  if (!accessToken || !refreshToken) return null;
-
-  const supabaseServer = getServiceClient();
-
-  // try access token
-  const { data: userRes, error: userErr } =
-    await supabaseServer.auth.getUser(accessToken);
-
-  if (!userErr && userRes.user) {
-    return userRes.user;
-  }
-
-  // try refresh flow
-  const { data: refreshed, error: refreshErr } =
-    await supabaseServer.auth.refreshSession({
-      refresh_token: refreshToken,
-    });
-
-  if (refreshErr || !refreshed.session?.user) {
+    return user;
+  } catch (err) {
+    console.error("getCurrentUser error:", err);
     return null;
   }
-
-  return refreshed.session.user;
 }
 
-// redirect to /login if not authed
-export async function requireUser(): Promise<User> {
+/**
+ * Require a logged-in user. If not logged in, redirect to /login.
+ * Useful inside server components / server actions when you must enforce auth.
+ */
+export async function requireCurrentUser(): Promise<SupabaseUser> {
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/login?redirectTo=%2Fprotected");
+    // You can append the next param or return path if you want to redirect back
+    redirect(`/login`);
+    // redirect throws and halts further server rendering
   }
   return user;
 }

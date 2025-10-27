@@ -1,3 +1,4 @@
+// src/app/login/LoginClient.tsx
 "use client";
 
 import * as React from "react";
@@ -5,32 +6,36 @@ import { useState, useTransition } from "react";
 import { loginAction } from "./actions";
 
 export default function LoginClient() {
-  // controlled inputs
+  // form fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // ui state
+  // UI state / errors
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // server action transition
+  // server action pending state
   const [isPending, startTransition] = useTransition();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setErrorMsg(null); // clear any previous error
+    setErrorMsg(null);
+
+    // read ?redirectTo=... from current URL
+    const params = new URLSearchParams(window.location.search);
+    const redirectTo = params.get("redirectTo") ?? "/protected";
 
     const formData = new FormData();
     formData.set("email", email);
     formData.set("password", password);
+    formData.set("redirectTo", redirectTo);
 
     startTransition(async () => {
       try {
         const result = await loginAction(formData);
 
-        // IMPORTANT:
-        // loginAction will either:
-        //   - redirect("/protected") on success (so we never get here)
-        //   - OR return { error: "..." } if it failed validation / auth
+        // On success, loginAction will redirect() server-side,
+        // so execution won't continue here.
+        // On failure, it returns { error: "..." }.
         if (result && "error" in result && result.error) {
           setErrorMsg(result.error);
         }

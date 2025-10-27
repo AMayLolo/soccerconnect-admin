@@ -1,57 +1,75 @@
 // src/app/protected/page.tsx
-import Link from "next/link";
-
 export const dynamic = "force-dynamic";
 
-export default function ProtectedHome() {
+export default function ProtectedHomePage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-gray-900">
-          Dashboard
-        </h2>
-        <p className="text-sm text-gray-600 mt-1">
-          Welcome to SoccerConnect Admin. Choose what you want to manage.
+    <section className="grid gap-6 md:grid-cols-2">
+      {/* Card: Moderation Queue */}
+      <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold text-neutral-900">
+            Flagged Reports
+          </h2>
+          <a
+            href="/protected/flagged"
+            className="text-xs font-medium text-blue-600 hover:underline"
+          >
+            View all →
+          </a>
+        </div>
+        <p className="mt-2 text-xs text-neutral-500 leading-relaxed">
+          Reports waiting for review / resolution.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Link
-          href="/protected/clubs"
-          className="block rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow transition"
-        >
-          <div className="text-sm font-medium text-gray-900">
-            Clubs
-          </div>
-          <div className="text-xs text-gray-500 mt-1">
-            Browse and audit clubs in Texas.
-          </div>
-        </Link>
-
-        <Link
-          href="/protected/flagged"
-          className="block rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow transition"
-        >
-          <div className="text-sm font-medium text-gray-900">
-            Flagged Reports
-          </div>
-          <div className="text-xs text-gray-500 mt-1">
-            See parent-reported issues and mark them resolved.
-          </div>
-        </Link>
-
-        <Link
-          href="/protected/reviews"
-          className="block rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow transition"
-        >
-          <div className="text-sm font-medium text-gray-900">
-            Reviews
-          </div>
-          <div className="text-xs text-gray-500 mt-1">
-            Monitor and moderate incoming reviews.
-          </div>
-        </Link>
+      {/* Card: Reviews */}
+      <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold text-neutral-900">
+            Recent Reviews
+          </h2>
+          <a
+            href="/protected/reviews"
+            className="text-xs font-medium text-blue-600 hover:underline"
+          >
+            View all →
+          </a>
+        </div>
+        <p className="mt-2 text-xs text-neutral-500 leading-relaxed">
+          Latest club feedback activity.
+        </p>
       </div>
-    </div>
+
+      {/* Card: Reports */}
+      <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold text-neutral-900">
+            Reports
+          </h2>
+          <a
+            href="/protected/reports"
+            className="text-xs font-medium text-blue-600 hover:underline"
+          >
+            View all →
+          </a>
+        </div>
+        <p className="mt-2 text-xs text-neutral-500 leading-relaxed">
+          View individual report submissions from parents.
+        </p>
+      </div>
+
+      {/* Card: System status / placeholder */}
+      <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-neutral-900">
+          System Status
+        </h2>
+        <p className="mt-2 text-xs text-neutral-500 leading-relaxed">
+          Auth, Supabase connection, and deployment are live.
+        </p>
+        <p className="mt-2 text-[11px] text-green-600 font-semibold">
+          • All services operational
+        </p>
+      </div>
+    </section>
   );
 }

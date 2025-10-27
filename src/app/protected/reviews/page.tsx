@@ -83,12 +83,12 @@ function CategoryBadge({ category }: { category: string | null }) {
 }
 
 export default async function ReviewsPage() {
-  // ✅ protect the page
+  // protect the page
   await requireCurrentUser();
 
   const supabase = await createServerClientInstance();
 
-  // 1. Fetch reviews (newest first)
+  // fetch reviews
   const {
     data: reviews,
     error: reviewsError,
@@ -113,7 +113,7 @@ export default async function ReviewsPage() {
     ? (reviews as ReviewRow[])
     : [];
 
-  // 2. Build club_id set
+  // fetch clubs for name mapping
   const uniqueClubIds = Array.from(
     new Set(
       reviewList
@@ -122,7 +122,6 @@ export default async function ReviewsPage() {
     )
   );
 
-  // 3. Fetch clubs for name lookup
   let clubMap: Record<string, string> = {};
   if (uniqueClubIds.length > 0) {
     const {
@@ -145,117 +144,10 @@ export default async function ReviewsPage() {
     }
   }
 
-  // little helper so we don't duplicate view logic in JSX
-  function renderTable() {
-    if (reviewsError) {
-      return (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
-          Error loading reviews: {reviewsError.message}
-        </div>
-      );
-    }
-
-    if (reviewList.length === 0) {
-      return (
-        <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center text-sm text-neutral-500 shadow-sm">
-          No reviews yet.
-        </div>
-      );
-    }
-
-    return (
-      <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
-        <table className="min-w-full text-left text-sm text-neutral-800">
-          <thead className="bg-neutral-50 text-[11px] uppercase text-neutral-500">
-            <tr className="text-left">
-              <th className="px-4 py-3 font-medium">Rating</th>
-              <th className="px-4 py-3 font-medium w-[320px]">Comment</th>
-              <th className="px-4 py-3 font-medium w-[180px]">Club</th>
-              <th className="px-4 py-3 font-medium w-[160px]">User</th>
-              <th className="px-4 py-3 font-medium">Category</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium whitespace-nowrap">
-                Created
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white text-[13px]">
-            {reviewList.map((rev, idx) => {
-              const clubName = rev.club_id
-                ? clubMap[rev.club_id] || rev.club_id
-                : "—";
-
-              return (
-                <tr
-                  key={rev.id}
-                  className={
-                    "align-top border-t border-neutral-200 " +
-                    (idx % 2 === 1
-                      ? "bg-neutral-50/50 hover:bg-neutral-100"
-                      : "bg-white hover:bg-neutral-100")
-                  }
-                >
-                  {/* Rating */}
-                  <td className="px-4 py-2.5 text-sm font-semibold text-neutral-900">
-                    {rev.rating ?? "-"}
-                  </td>
-
-                  {/* Comment */}
-                  <td className="px-4 py-2.5 text-neutral-700 leading-relaxed break-words">
-                    <div className="font-normal">
-                      {rev.comment || "(no comment)"}
-                    </div>
-                  </td>
-
-                  {/* Club */}
-                  <td className="px-4 py-2.5 text-neutral-700 leading-relaxed break-words">
-                    <div className="text-sm font-medium text-neutral-900">
-                      {clubName}
-                    </div>
-                    <div className="text-[11px] text-neutral-500 break-all">
-                      {rev.club_id ?? "—"}
-                    </div>
-                  </td>
-
-                  {/* User */}
-                  <td className="px-4 py-2.5 text-neutral-700 leading-relaxed break-words">
-                    <div className="text-sm font-medium text-neutral-900 break-all">
-                      {rev.user_id || "—"}
-                    </div>
-                    <div className="text-[11px] text-neutral-500">
-                      User ID
-                    </div>
-                  </td>
-
-                  {/* Category */}
-                  <td className="px-4 py-2.5 align-top text-neutral-700 leading-relaxed">
-                    <CategoryBadge category={rev.category} />
-                  </td>
-
-                  {/* Status */}
-                  <td className="px-4 py-2.5 align-top text-neutral-700 leading-relaxed">
-                    <div className="flex flex-col gap-1">
-                      <FlagBadge flagged={rev.flagged} />
-                      <HiddenBadge hidden={rev.hidden} />
-                    </div>
-                  </td>
-
-                  {/* Created */}
-                  <td className="px-4 py-2.5 text-neutral-500 whitespace-nowrap align-top">
-                    {formatTimestamp(rev.inserted_at)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
-
+  // big render
   return (
-    <section className="space-y-6">
-      {/* Page header / meta */}
+    <section className="space-y-8">
+      {/* Page header */}
       <header className="flex flex-col gap-2 md:flex-row md:items-baseline md:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-neutral-900">
@@ -270,7 +162,7 @@ export default async function ReviewsPage() {
           </p>
         </div>
 
-        {/* Placeholder for future filters */}
+        {/* filter chips placeholder */}
         <div className="flex flex-wrap gap-2 text-[12px]">
           <span className="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-neutral-700 shadow-sm">
             Show: All
@@ -284,7 +176,128 @@ export default async function ReviewsPage() {
         </div>
       </header>
 
-      {renderTable()}
+      {/* Card wrapper around the table */}
+      <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm">
+        {/* card header bar */}
+        <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-semibold text-neutral-900">
+              Reviews
+            </div>
+            <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2 py-[2px] text-[11px] font-medium text-neutral-600">
+              Live feed
+            </span>
+          </div>
+
+          <div className="text-[11px] text-neutral-500">
+            Most recent at top
+          </div>
+        </div>
+
+        {/* table / error / empty */}
+        <div className="p-4">
+          {reviewsError ? (
+            <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+              Error loading reviews: {reviewsError.message}
+            </div>
+          ) : reviewList.length === 0 ? (
+            <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center text-sm text-neutral-500 shadow-sm">
+              No reviews yet.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-neutral-200">
+              <table className="min-w-full text-left text-sm text-neutral-800">
+                <thead className="bg-neutral-100 text-[11px] uppercase text-neutral-600">
+                  <tr className="text-left">
+                    <th className="px-4 py-2 font-medium">Rating</th>
+                    <th className="px-4 py-2 font-medium w-[320px]">
+                      Comment
+                    </th>
+                    <th className="px-4 py-2 font-medium w-[180px]">Club</th>
+                    <th className="px-4 py-2 font-medium w-[160px]">User</th>
+                    <th className="px-4 py-2 font-medium">Category</th>
+                    <th className="px-4 py-2 font-medium">Status</th>
+                    <th className="px-4 py-2 font-medium whitespace-nowrap">
+                      Created
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="text-[13px]">
+                  {reviewList.map((rev, idx) => {
+                    const clubName = rev.club_id
+                      ? clubMap[rev.club_id] || rev.club_id
+                      : "—";
+
+                    return (
+                      <tr
+                        key={rev.id}
+                        className={
+                          "align-top " +
+                          // zebra
+                          (idx % 2 === 1
+                            ? "bg-neutral-50 hover:bg-neutral-100"
+                            : "bg-white hover:bg-neutral-100") +
+                          " border-t border-neutral-200"
+                        }
+                      >
+                        {/* Rating */}
+                        <td className="px-4 py-2.5 text-sm font-semibold text-neutral-900">
+                          {rev.rating ?? "-"}
+                        </td>
+
+                        {/* Comment */}
+                        <td className="px-4 py-2.5 text-neutral-700 leading-relaxed break-words">
+                          <div className="font-normal">
+                            {rev.comment || "(no comment)"}
+                          </div>
+                        </td>
+
+                        {/* Club */}
+                        <td className="px-4 py-2.5 text-neutral-700 leading-relaxed break-words">
+                          <div className="text-sm font-medium text-neutral-900">
+                            {clubName}
+                          </div>
+                          <div className="text-[11px] text-neutral-500 break-all">
+                            {rev.club_id ?? "—"}
+                          </div>
+                        </td>
+
+                        {/* User */}
+                        <td className="px-4 py-2.5 text-neutral-700 leading-relaxed break-words">
+                          <div className="text-sm font-medium text-neutral-900 break-all">
+                            {rev.user_id || "—"}
+                          </div>
+                          <div className="text-[11px] text-neutral-500">
+                            User ID
+                          </div>
+                        </td>
+
+                        {/* Category */}
+                        <td className="px-4 py-2.5 align-top text-neutral-700 leading-relaxed">
+                          <CategoryBadge category={rev.category} />
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-4 py-2.5 align-top text-neutral-700 leading-relaxed">
+                          <div className="flex flex-col gap-1">
+                            <FlagBadge flagged={rev.flagged} />
+                            <HiddenBadge hidden={rev.hidden} />
+                          </div>
+                        </td>
+
+                        {/* Created */}
+                        <td className="px-4 py-2.5 text-neutral-500 whitespace-nowrap align-top">
+                          {formatTimestamp(rev.inserted_at)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </section>
   );
 }

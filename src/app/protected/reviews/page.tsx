@@ -6,16 +6,14 @@ export const dynamic = "force-dynamic";
 
 type ReviewRow = {
   id: string;
-  inserted_at: string | null;
-  rating: number | null;
-  title: string | null;
-  headline: string | null;
-  body: string | null;
-  comment: string | null;
-  text: string | null;
   club_id: string | null;
-  author_name: string | null;
-  author_role: string | null;
+  user_id: string | null;
+  rating: number | null;
+  comment: string | null;
+  inserted_at: string | null;
+  category: string | null;
+  flagged: boolean | null;
+  hidden: boolean | null;
 };
 
 type ClubRow = {
@@ -37,12 +35,12 @@ function formatTimestamp(ts: string | null) {
 }
 
 export default async function ReviewsPage() {
-  // protect the page
+  // ✅ protect route (redirects to /login if not logged in)
   await requireCurrentUser();
 
   const supabase = await createServerClientInstance();
 
-  // 1. Get ALL reviews, ordered newest first by inserted_at
+  // 1. Pull all reviews from newest to oldest, using real columns only
   const {
     data: reviews,
     error: reviewsError,
@@ -51,16 +49,14 @@ export default async function ReviewsPage() {
     .select(
       `
         id,
-        inserted_at,
-        rating,
-        title,
-        headline,
-        body,
-        comment,
-        text,
         club_id,
-        author_name,
-        author_role
+        user_id,
+        rating,
+        comment,
+        inserted_at,
+        category,
+        flagged,
+        hidden
       `
     )
     .order("inserted_at", { ascending: false });
@@ -69,7 +65,7 @@ export default async function ReviewsPage() {
     ? (reviews as ReviewRow[])
     : [];
 
-  // 2. Build list of unique club_ids
+  // 2. Collect unique club_ids so we can map club_id -> club name
   const uniqueClubIds = Array.from(
     new Set(
       reviewList
@@ -78,7 +74,7 @@ export default async function ReviewsPage() {
     )
   );
 
-  // 3. Fetch those clubs and build a lookup map: club_id -> club_name
+  // 3. Fetch those clubs in one query
   let clubMap: Record<string, string> = {};
   if (uniqueClubIds.length > 0) {
     const {
@@ -114,7 +110,7 @@ export default async function ReviewsPage() {
         </div>
       </header>
 
-      {/* Error loading */}
+      {/* Error block */}
       {reviewsError && (
         <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
           Error loading reviews: {reviewsError.message}
@@ -135,10 +131,11 @@ export default async function ReviewsPage() {
             <thead className="bg-neutral-50 text-xs uppercase text-neutral-500">
               <tr>
                 <th className="px-4 py-3 font-medium">Rating</th>
-                <th className="px-4 py-3 font-medium">Title</th>
-                <th className="px-4 py-3 font-medium">Body</th>
+                <th className="px-4 py-3 font-medium">Comment</th>
                 <th className="px-4 py-3 font-medium">Club</th>
-                <th className="px-4 py-3 font-medium">Author</th>
+                <th className="px-4 py-3 font-medium">User</th>
+                <th className="px-4 py-3 font-medium">Category</th>
+                <th className="px-4 py-3 font-medium">Flags</th>
                 <th className="px-4 py-3 font-medium whitespace-nowrap">
                   Created
                 </th>
@@ -150,17 +147,6 @@ export default async function ReviewsPage() {
                   ? clubMap[rev.club_id] || rev.club_id
                   : "—";
 
-                const displayTitle =
-                  rev.title ||
-                  rev.headline ||
-                  "(no title)";
-
-                const displayBody =
-                  rev.body ||
-                  rev.comment ||
-                  rev.text ||
-                  "(no body)";
-
                 return (
                   <tr key={rev.id} className="align-top">
                     {/* Rating */}
@@ -168,18 +154,13 @@ export default async function ReviewsPage() {
                       {rev.rating ?? "-"}
                     </td>
 
-                    {/* Title */}
-                    <td className="px-4 py-3 text-sm text-neutral-900 max-w-[200px] break-words">
-                      {displayTitle}
-                    </td>
-
-                    {/* Body */}
+                    {/* Comment/body */}
                     <td className="px-4 py-3 text-sm text-neutral-700 max-w-[320px] break-words leading-relaxed">
-                      {displayBody}
+                      {rev.comment || "(no comment)"}
                     </td>
 
-                    {/* Club */}
-                    <td className="px-4 py-3 text-xs text-neutral-600 leading-relaxed max-w-[160px] break-words">
+                    {/* Club info */}
+                    <td className="px-4 py-3 text-xs text-neutral-600 leading-relaxed max-w-[200px] break-words">
                       <div className="font-medium text-neutral-800">
                         {clubName}
                       </div>
@@ -188,17 +169,48 @@ export default async function ReviewsPage() {
                       </div>
                     </td>
 
-                    {/* Author */}
-                    <td className="px-4 py-3 text-xs text-neutral-600 leading-relaxed">
+                    {/* User info (right now we just show user_id) */}
+                    <td className="px-4 py-3 text-xs text-neutral-600 leading-relaxed break-all max-w-[160px]">
                       <div className="font-medium text-neutral-800">
-                        {rev.author_name || "Anonymous"}
-                      </div>
-                      <div className="text-[11px] text-neutral-500">
-                        {rev.author_role || ""}
+                        {rev.user_id || "—"}
                       </div>
                     </td>
 
-                    {/* Created */}
+                    {/* Category */}
+                    <td className="px-4 py-3 text-xs text-neutral-600 leading-relaxed">
+                      <span className="inline-flex items-center rounded-md border border-neutral-300 bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-700">
+                        {rev.category || "—"}
+                      </span>
+                    </td>
+
+                    {/* Flags (flagged / hidden) */}
+                    <td className="px-4 py-3 text-xs text-neutral-600 leading-relaxed">
+                      <div className="flex flex-col gap-1">
+                        <span
+                          className={
+                            "inline-flex w-fit rounded-md px-2 py-0.5 text-[11px] font-medium border " +
+                            (rev.flagged
+                              ? "bg-red-50 text-red-700 border-red-300"
+                              : "bg-neutral-100 text-neutral-600 border-neutral-300")
+                          }
+                        >
+                          {rev.flagged ? "Flagged" : "OK"}
+                        </span>
+
+                        <span
+                          className={
+                            "inline-flex w-fit rounded-md px-2 py-0.5 text-[11px] font-medium border " +
+                            (rev.hidden
+                              ? "bg-yellow-50 text-yellow-700 border-yellow-300"
+                              : "bg-neutral-100 text-neutral-600 border-neutral-300")
+                          }
+                        >
+                          {rev.hidden ? "Hidden" : "Visible"}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Timestamp */}
                     <td className="px-4 py-3 text-xs text-neutral-500 whitespace-nowrap">
                       {formatTimestamp(rev.inserted_at)}
                     </td>

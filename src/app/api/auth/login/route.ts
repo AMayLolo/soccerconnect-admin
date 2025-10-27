@@ -1,11 +1,16 @@
 // src/app/api/auth/login/route.ts
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
+
+// Force Node runtime + dynamic so we can set cookies and read env
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+const BASE_URL = "https://admin.soccerconnectusa.com";
 
 export async function POST(req: Request) {
   try {
-    // --- Step 1: pull creds from form
+    // STEP 1: read form data
     let form: FormData;
     try {
       form = await req.formData();
@@ -16,12 +21,16 @@ export async function POST(req: Request) {
 
     const email = form.get("email") as string;
     const password = form.get("password") as string;
+
     if (!email || !password) {
-      console.error("LOGIN STEP 1 missing creds", { emailPresent: !!email, passwordPresent: !!password });
+      console.error("LOGIN STEP 1 missing creds", {
+        emailPresent: !!email,
+        passwordPresent: !!password,
+      });
       return new NextResponse("Missing credentials", { status: 400 });
     }
 
-    // --- Step 2: build supabase client
+    // STEP 2: build supabase client
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -40,7 +49,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // --- Step 3: sign in
+    // STEP 3: sign in with Supabase
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -56,11 +65,14 @@ export async function POST(req: Request) {
     const accessToken = data.session.access_token;
     const refreshToken = data.session.refresh_token;
 
-    // --- Step 4: set cookies
+    // STEP 4: build redirect response and attach cookies
     try {
-      const cookieStore = await cookies();
+      const res = NextResponse.redirect(
+        `${BASE_URL}/protected`,
+        { status: 302 }
+      );
 
-      cookieStore.set("sb-access-token", accessToken, {
+      res.cookies.set("sb-access-token", accessToken, {
         httpOnly: true,
         secure: true,
         sameSite: "lax",
@@ -68,20 +80,19 @@ export async function POST(req: Request) {
         maxAge: 60 * 60, // 1 hour
       });
 
-      cookieStore.set("sb-refresh-token", refreshToken, {
+      res.cookies.set("sb-refresh-token", refreshToken, {
         httpOnly: true,
         secure: true,
         sameSite: "lax",
         path: "/",
         maxAge: 60 * 60 * 24 * 7, // 7 days
       });
+
+      return res;
     } catch (err) {
-      console.error("LOGIN STEP 4 cookie error:", err);
+      console.error("LOGIN STEP 4 cookie/redirect error:", err);
       return new NextResponse("Failed to set cookies", { status: 500 });
     }
-
-    // --- Step 5: redirect to /protected
-    return NextResponse.redirect("/protected", { status: 302 });
   } catch (err) {
     console.error("LOGIN ROUTE UNCAUGHT:", err);
     return new NextResponse("Server error during login", { status: 500 });

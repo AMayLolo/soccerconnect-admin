@@ -1,34 +1,34 @@
 // src/app/api/auth/signout/route.ts
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-async function clearAuthCookies() {
-  const cookieStore = await cookies();
+function buildSignoutResponse() {
+  // 302 redirect to /login
+  const res = NextResponse.redirect("/login", { status: 302 });
 
-  // clear access token
-  cookieStore.set("sb-access-token", "", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",   // fallback from "none"
-    path: "/",
-    maxAge: 0,
-  });
-
-  // clear refresh token
-  cookieStore.set("sb-refresh-token", "", {
+  // Clear access token cookie
+  res.cookies.set("sb-access-token", "", {
     httpOnly: true,
     secure: true,
     sameSite: "lax",
     path: "/",
     maxAge: 0,
   });
+
+  // Clear refresh token cookie
+  res.cookies.set("sb-refresh-token", "", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+
+  return res;
 }
 
 export async function GET() {
   try {
-    await clearAuthCookies();
-
-    return NextResponse.redirect("/login", { status: 302 });
+    return buildSignoutResponse();
   } catch (err) {
     console.error("SIGNOUT ERROR (GET):", err);
     return new NextResponse("Signout failed", { status: 500 });
@@ -36,5 +36,10 @@ export async function GET() {
 }
 
 export async function POST() {
-  return GET();
+  try {
+    return buildSignoutResponse();
+  } catch (err) {
+    console.error("SIGNOUT ERROR (POST):", err);
+    return new NextResponse("Signout failed", { status: 500 });
+  }
 }

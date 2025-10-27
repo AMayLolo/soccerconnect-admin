@@ -5,18 +5,33 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: Request) {
   try {
-    // 1. Read credentials from the login form POST
-    const form = await req.formData();
+    // --- Step 1: pull creds from form
+    let form: FormData;
+    try {
+      form = await req.formData();
+    } catch (err) {
+      console.error("LOGIN STEP 1 formData() error:", err);
+      return new NextResponse("Unable to read formData()", { status: 500 });
+    }
+
     const email = form.get("email") as string;
     const password = form.get("password") as string;
-
     if (!email || !password) {
+      console.error("LOGIN STEP 1 missing creds", { emailPresent: !!email, passwordPresent: !!password });
       return new NextResponse("Missing credentials", { status: 400 });
     }
 
-    // 2. Create a fresh Supabase client (no session yet)
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    // --- Step 2: build supabase client
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("LOGIN STEP 2 missing env", {
+        hasUrl: !!supabaseUrl,
+        hasAnon: !!supabaseAnonKey,
+      });
+      return new NextResponse("Supabase env not configured", { status: 500 });
+    }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
@@ -25,47 +40,50 @@ export async function POST(req: Request) {
       },
     });
 
-    // 3. Ask Supabase to sign in with email/password
+    // --- Step 3: sign in
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error || !data?.session) {
-      console.error(
-        "supabase signInWithPassword error:",
-        error?.message || "no session"
-      );
+      console.error("LOGIN STEP 3 invalid creds", {
+        supabaseError: error?.message,
+      });
       return new NextResponse("Invalid email or password", { status: 401 });
     }
 
-    // 4. Grab tokens from the new session
     const accessToken = data.session.access_token;
     const refreshToken = data.session.refresh_token;
 
-    // 5. Write httpOnly auth cookies so the rest of the app can read them
-    const cookieStore = await cookies();
+    // --- Step 4: set cookies
+    try {
+      const cookieStore = await cookies();
 
-    cookieStore.set("sb-access-token", accessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60, // 1 hour
-    });
+      cookieStore.set("sb-access-token", accessToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60, // 1 hour
+      });
 
-    cookieStore.set("sb-refresh-token", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
+      cookieStore.set("sb-refresh-token", refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+      });
+    } catch (err) {
+      console.error("LOGIN STEP 4 cookie error:", err);
+      return new NextResponse("Failed to set cookies", { status: 500 });
+    }
 
-    // 6. Redirect to /protected after successful login
+    // --- Step 5: redirect to /protected
     return NextResponse.redirect("/protected", { status: 302 });
   } catch (err) {
-    console.error("LOGIN ROUTE CRASH:", err);
+    console.error("LOGIN ROUTE UNCAUGHT:", err);
     return new NextResponse("Server error during login", { status: 500 });
   }
 }

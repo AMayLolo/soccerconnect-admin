@@ -1,10 +1,9 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* global admin styles */
 
-/* optional small polish defaults */
 body {
   color: #0a0a0a;
   -webkit-font-smoothing: antialiased;
-  background-color: #fafafa; /* backup if Tailwind class not applied yet */
+  background-color: #fafafa;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", "Roboto",
+    "Helvetica Neue", Arial, sans-serif;
 }

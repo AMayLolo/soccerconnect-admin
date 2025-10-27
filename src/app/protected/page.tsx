@@ -26,7 +26,7 @@ export default function ProtectedHomePage() {
       <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="flex items-baseline justify-between">
           <h2 className="text-sm font-semibold text-neutral-900">
-            Recent Reviews
+            Reviews
           </h2>
           <a
             href="/protected/reviews"
@@ -36,16 +36,14 @@ export default function ProtectedHomePage() {
           </a>
         </div>
         <p className="mt-2 text-xs text-neutral-500 leading-relaxed">
-          Latest club feedback activity.
+          All submitted parent feedback.
         </p>
       </div>
 
       {/* Card: Reports */}
       <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-neutral-900">
-            Reports
-          </h2>
+          <h2 className="text-sm font-semibold text-neutral-900">Reports</h2>
           <a
             href="/protected/reports"
             className="text-xs font-medium text-blue-600 hover:underline"

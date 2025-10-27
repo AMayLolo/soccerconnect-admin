@@ -1,5 +1,8 @@
-/* global admin styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* Your global admin styles */
 body {
   color: #0a0a0a;
   -webkit-font-smoothing: antialiased;

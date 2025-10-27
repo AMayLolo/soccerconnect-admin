@@ -1,6 +1,6 @@
 // src/app/protected/reviews/page.tsx
-import { createServerClientInstance } from "@/utils/supabase/server";
 import { requireCurrentUser } from "@/utils/auth";
+import { createServerClientInstance } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ type ReviewRow = {
 
 type ClubRow = {
   id: string;
-  name: string | null;
+  club_name: string | null;
 };
 
 function formatTimestamp(ts: string | null) {
@@ -83,11 +83,12 @@ function CategoryBadge({ category }: { category: string | null }) {
 }
 
 export default async function ReviewsPage() {
+  // Protect route
   await requireCurrentUser();
 
   const supabase = await createServerClientInstance();
 
-  // Fetch reviews
+  // 1. Fetch reviews (newest first)
   const {
     data: reviews,
     error: reviewsError,
@@ -112,7 +113,7 @@ export default async function ReviewsPage() {
     ? (reviews as ReviewRow[])
     : [];
 
-  // Fetch clubs -> map id -> name
+  // 2. Build list of unique club_ids from reviews
   const uniqueClubIds = Array.from(
     new Set(
       reviewList
@@ -121,27 +122,26 @@ export default async function ReviewsPage() {
     )
   );
 
+  // 3. Fetch clubs -> map of { club_id: club_name }
   let clubMap: Record<string, string> = {};
-  if (uniqueClubIds.length > 0) {
-    const {
-      data: clubs,
-      error: clubsError,
-    } = await supabase
-      .from("clubs")
-      .select("id, name")
-      .in("id", uniqueClubIds);
 
-    if (clubsError) {
-      console.error("Error loading clubs:", clubsError.message);
-    }
+if (uniqueClubIds.length > 0) {
+  const clubsResult = await supabase
+    .from("clubs")
+    .select("id, club_name")
+    .in("id", uniqueClubIds);
 
-    if (Array.isArray(clubs)) {
-      clubMap = (clubs as ClubRow[]).reduce((acc, club) => {
-        acc[club.id] = club.name || "(Unnamed Club)";
-        return acc;
-      }, {} as Record<string, string>);
-    }
+  if (clubsResult.error) {
+    console.error("Error loading clubs:", clubsResult.error);
+  } else if (Array.isArray(clubsResult.data)) {
+    clubMap = (clubsResult.data as ClubRow[]).reduce((acc, club) => {
+      acc[club.id] = (club as any).club_name || "(Unnamed Club)";
+      return acc;
+    }, {} as Record<string, string>);
   }
+}
+
+
 
   return (
     <section className="space-y-8">

@@ -3,11 +3,10 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 /**
- * Create a Supabase client on the server, using the auth cookies we store
- * (sb-access-token / sb-refresh-token).
- *
- * This lets server components and layouts call supabase.auth.getUser()
- * consistently.
+ * Create a Supabase client on the server using the request cookies.
+ * We expect loginAction() to have already set:
+ *   - sb-access-token
+ *   - sb-refresh-token
  */
 export async function createServerClientInstance(): Promise<SupabaseClient> {
   const cookieStore = await cookies();
@@ -18,7 +17,6 @@ export async function createServerClientInstance(): Promise<SupabaseClient> {
   const accessToken = cookieStore.get("sb-access-token")?.value;
   const refreshToken = cookieStore.get("sb-refresh-token")?.value;
 
-  // Create the client with no built-in cookie persistence (we're SSR)
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: false,
@@ -26,8 +24,7 @@ export async function createServerClientInstance(): Promise<SupabaseClient> {
     },
   });
 
-  // If we DO have both tokens, explicitly set the session so supabase.auth.getUser() works.
-  // If we don't, don't call setSession(), because passing empty strings can cause type errors.
+  // If we have both tokens, hydrate the session so .auth.getUser() works
   if (accessToken && refreshToken) {
     try {
       await supabase.auth.setSession({
@@ -36,7 +33,7 @@ export async function createServerClientInstance(): Promise<SupabaseClient> {
       });
     } catch (err) {
       console.warn(
-        "setSession failed in createServerClientInstance (likely expired tokens):",
+        "setSession failed in createServerClientInstance (maybe expired tokens):",
         err
       );
     }

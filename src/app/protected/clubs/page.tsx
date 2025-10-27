@@ -1,13 +1,14 @@
 // src/app/protected/clubs/page.tsx
 
 import { requireUser } from "@/utils/auth";
-import { getServiceClient } from "@/utils/supabase/server";
+import { createServerClientInstance } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 async function getAllClubs() {
-  const supabase = getServiceClient();
+  // create a Supabase server client bound to cookies
+  const supabase = await createServerClientInstance();
 
   const { data, error } = await supabase
     .from("clubs")
@@ -24,7 +25,8 @@ async function getAllClubs() {
 }
 
 export default async function ClubsPage() {
-  await requireUser(); // still protects the route
+  // enforce authentication (redirects to /login if not logged in)
+  await requireUser();
 
   const clubs = await getAllClubs();
 
@@ -35,9 +37,7 @@ export default async function ClubsPage() {
       </h1>
 
       {clubs.length === 0 ? (
-        <div className="text-sm text-gray-500">
-          No clubs found.
-        </div>
+        <div className="text-sm text-gray-500">No clubs found.</div>
       ) : (
         <div className="space-y-3">
           {clubs.map((c: any) => (
@@ -49,9 +49,11 @@ export default async function ClubsPage() {
               <div className="text-gray-600">
                 {c.city}, {c.state}
               </div>
-              <div className="text-gray-500 text-xs break-all">
-                {c.website}
-              </div>
+              {c.website && (
+                <div className="text-gray-500 text-xs break-all">
+                  {c.website}
+                </div>
+              )}
             </div>
           ))}
         </div>

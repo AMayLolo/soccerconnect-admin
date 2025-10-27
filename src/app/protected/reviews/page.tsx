@@ -76,19 +76,18 @@ function CategoryBadge({ category }: { category: string | null }) {
   }
 
   return (
-    <span className="inline-flex w-fit items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-[2px] text-[11px] font-medium text-blue-700">
+    <span className="inline-flex w-fit items-center rounded-full border border-blue-300 bg-blue-50 px-2 py-[2px] text-[11px] font-medium text-blue-700">
       {category}
     </span>
   );
 }
 
 export default async function ReviewsPage() {
-  // protect the page
   await requireCurrentUser();
 
   const supabase = await createServerClientInstance();
 
-  // fetch reviews
+  // Fetch reviews
   const {
     data: reviews,
     error: reviewsError,
@@ -113,7 +112,7 @@ export default async function ReviewsPage() {
     ? (reviews as ReviewRow[])
     : [];
 
-  // fetch clubs for name mapping
+  // Fetch clubs -> map id -> name
   const uniqueClubIds = Array.from(
     new Set(
       reviewList
@@ -144,17 +143,16 @@ export default async function ReviewsPage() {
     }
   }
 
-  // big render
   return (
     <section className="space-y-8">
       {/* Page header */}
       <header className="flex flex-col gap-2 md:flex-row md:items-baseline md:justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-neutral-900">
+          <h1 className="text-xl font-semibold text-neutral-900">
             All Reviews
           </h1>
 
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-neutral-600">
             {reviewList.length === 1
               ? "1 total review"
               : `${reviewList.length} total reviews`}{" "}
@@ -162,7 +160,7 @@ export default async function ReviewsPage() {
           </p>
         </div>
 
-        {/* filter chips placeholder */}
+        {/* Filter chips (static for now) */}
         <div className="flex flex-wrap gap-2 text-[12px]">
           <span className="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-neutral-700 shadow-sm">
             Show: All
@@ -176,15 +174,15 @@ export default async function ReviewsPage() {
         </div>
       </header>
 
-      {/* Card wrapper around the table */}
-      <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm">
-        {/* card header bar */}
-        <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
+      {/* Card wrapper around table */}
+      <div className="rounded-2xl border border-neutral-300 bg-white shadow-sm">
+        {/* Card header */}
+        <div className="flex items-center justify-between border-b border-neutral-300 px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="text-sm font-semibold text-neutral-900">
               Reviews
             </div>
-            <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2 py-[2px] text-[11px] font-medium text-neutral-600">
+            <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2 py-[2px] text-[11px] font-medium text-neutral-700">
               Live feed
             </span>
           </div>
@@ -194,20 +192,20 @@ export default async function ReviewsPage() {
           </div>
         </div>
 
-        {/* table / error / empty */}
+        {/* Card body */}
         <div className="p-4">
           {reviewsError ? (
-            <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="rounded-lg border border-red-400 bg-red-50 px-3 py-2 text-sm text-red-700">
               Error loading reviews: {reviewsError.message}
             </div>
           ) : reviewList.length === 0 ? (
-            <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center text-sm text-neutral-500 shadow-sm">
+            <div className="rounded-xl border border-neutral-300 bg-white p-6 text-center text-sm text-neutral-500 shadow-sm">
               No reviews yet.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-neutral-200">
+            <div className="overflow-x-auto rounded-xl border border-neutral-300">
               <table className="min-w-full text-left text-sm text-neutral-800">
-                <thead className="bg-neutral-100 text-[11px] uppercase text-neutral-600">
+                <thead className="bg-neutral-100 text-[11px] uppercase text-neutral-700">
                   <tr className="text-left">
                     <th className="px-4 py-2 font-medium">Rating</th>
                     <th className="px-4 py-2 font-medium w-[320px]">
@@ -222,6 +220,7 @@ export default async function ReviewsPage() {
                     </th>
                   </tr>
                 </thead>
+
                 <tbody className="text-[13px]">
                   {reviewList.map((rev, idx) => {
                     const clubName = rev.club_id
@@ -232,12 +231,10 @@ export default async function ReviewsPage() {
                       <tr
                         key={rev.id}
                         className={
-                          "align-top " +
-                          // zebra
+                          "align-top border-t border-neutral-300 " +
                           (idx % 2 === 1
                             ? "bg-neutral-50 hover:bg-neutral-100"
-                            : "bg-white hover:bg-neutral-100") +
-                          " border-t border-neutral-200"
+                            : "bg-white hover:bg-neutral-100")
                         }
                       >
                         {/* Rating */}
@@ -247,9 +244,7 @@ export default async function ReviewsPage() {
 
                         {/* Comment */}
                         <td className="px-4 py-2.5 text-neutral-700 leading-relaxed break-words">
-                          <div className="font-normal">
-                            {rev.comment || "(no comment)"}
-                          </div>
+                          {rev.comment || "(no comment)"}
                         </td>
 
                         {/* Club */}

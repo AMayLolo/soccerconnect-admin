@@ -10,16 +10,16 @@ export default async function ProtectedLayout({
 }: {
   children: ReactNode;
 }) {
-  // server-side gate
+  // server-side auth gate
   await requireCurrentUser();
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
-      {/* Top header / nav */}
+      {/* Sticky-ish header bar */}
       <ProtectedHeader />
 
-      {/* Page body */}
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 space-y-6">
+      {/* Page body wrapper */}
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 space-y-8">
         {children}
       </main>
     </div>

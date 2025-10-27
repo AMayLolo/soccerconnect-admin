@@ -1,35 +1,32 @@
 // src/app/api/auth/signout/route.ts
-import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   const cookieStore = await cookies();
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {
-          try {
-            cookieStore.set({ name, value, ...options });
-          } catch {}
-        },
-        remove(name: string, options: any) {
-          try {
-            cookieStore.set({ name, value: "", ...options });
-          } catch {}
-        },
-      },
-    }
-  );
+  // Blow away the auth cookies
+  cookieStore.set("sb-access-token", "", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
 
-  await supabase.auth.signOut();
+  cookieStore.set("sb-refresh-token", "", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
 
-  // After signout, go back to /login
-  return NextResponse.redirect(new URL("/login", process.env.NEXT_PUBLIC_BASE_URL || "https://admin.soccerconnectusa.com"));
+  // Send a real browser redirect to /login
+  return NextResponse.redirect("/login", { status: 302 });
+}
+
+// (optional, in case something calls it with POST)
+export async function POST() {
+  return GET();
 }

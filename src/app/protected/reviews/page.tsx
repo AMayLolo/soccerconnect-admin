@@ -6,10 +6,13 @@ export const dynamic = "force-dynamic";
 
 type ReviewRow = {
   id: string;
-  created_at: string | null;
+  inserted_at: string | null;
   rating: number | null;
   title: string | null;
+  headline: string | null;
   body: string | null;
+  comment: string | null;
+  text: string | null;
   club_id: string | null;
   author_name: string | null;
   author_role: string | null;
@@ -20,13 +23,26 @@ type ClubRow = {
   name: string | null;
 };
 
+function formatTimestamp(ts: string | null) {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default async function ReviewsPage() {
-  // auth-gate this page on the server
+  // protect the page
   await requireCurrentUser();
 
   const supabase = await createServerClientInstance();
 
-  // 1. Pull ALL reviews, newest first
+  // 1. Get ALL reviews, ordered newest first by inserted_at
   const {
     data: reviews,
     error: reviewsError,
@@ -35,25 +51,25 @@ export default async function ReviewsPage() {
     .select(
       `
         id,
-        created_at,
+        inserted_at,
         rating,
         title,
+        headline,
         body,
+        comment,
+        text,
         club_id,
         author_name,
         author_role
       `
     )
-    .order("created_at", { ascending: false });
+    .order("inserted_at", { ascending: false });
 
-  if (reviewsError) {
-    console.error("Error loading reviews:", reviewsError.message);
-  }
+  const reviewList: ReviewRow[] = Array.isArray(reviews)
+    ? (reviews as ReviewRow[])
+    : [];
 
-  // Ensure we always have an array
-  const reviewList: ReviewRow[] = Array.isArray(reviews) ? (reviews as any) : [];
-
-  // 2. Build a unique list of club_ids from the reviews
+  // 2. Build list of unique club_ids
   const uniqueClubIds = Array.from(
     new Set(
       reviewList
@@ -62,7 +78,7 @@ export default async function ReviewsPage() {
     )
   );
 
-  // 3. Fetch just those clubs so we can map id -> name
+  // 3. Fetch those clubs and build a lookup map: club_id -> club_name
   let clubMap: Record<string, string> = {};
   if (uniqueClubIds.length > 0) {
     const {
@@ -75,7 +91,9 @@ export default async function ReviewsPage() {
 
     if (clubsError) {
       console.error("Error loading clubs:", clubsError.message);
-    } else if (Array.isArray(clubs)) {
+    }
+
+    if (Array.isArray(clubs)) {
       clubMap = (clubs as ClubRow[]).reduce((acc, club) => {
         acc[club.id] = club.name || "(Unnamed Club)";
         return acc;
@@ -96,7 +114,7 @@ export default async function ReviewsPage() {
         </div>
       </header>
 
-      {/* Error message if reviews query failed */}
+      {/* Error loading */}
       {reviewsError && (
         <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
           Error loading reviews: {reviewsError.message}
@@ -110,7 +128,7 @@ export default async function ReviewsPage() {
         </div>
       )}
 
-      {/* Table of reviews */}
+      {/* Table */}
       {!reviewsError && reviewList.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
           <table className="min-w-full text-left text-sm text-neutral-800">
@@ -132,6 +150,17 @@ export default async function ReviewsPage() {
                   ? clubMap[rev.club_id] || rev.club_id
                   : "—";
 
+                const displayTitle =
+                  rev.title ||
+                  rev.headline ||
+                  "(no title)";
+
+                const displayBody =
+                  rev.body ||
+                  rev.comment ||
+                  rev.text ||
+                  "(no body)";
+
                 return (
                   <tr key={rev.id} className="align-top">
                     {/* Rating */}
@@ -141,12 +170,12 @@ export default async function ReviewsPage() {
 
                     {/* Title */}
                     <td className="px-4 py-3 text-sm text-neutral-900 max-w-[200px] break-words">
-                      {rev.title || "(no title)"}
+                      {displayTitle}
                     </td>
 
                     {/* Body */}
                     <td className="px-4 py-3 text-sm text-neutral-700 max-w-[320px] break-words leading-relaxed">
-                      {rev.body || "(no body)"}
+                      {displayBody}
                     </td>
 
                     {/* Club */}
@@ -171,15 +200,7 @@ export default async function ReviewsPage() {
 
                     {/* Created */}
                     <td className="px-4 py-3 text-xs text-neutral-500 whitespace-nowrap">
-                      {rev.created_at
-                        ? new Date(rev.created_at).toLocaleString("en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "—"}
+                      {formatTimestamp(rev.inserted_at)}
                     </td>
                   </tr>
                 );

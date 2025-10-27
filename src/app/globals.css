@@ -1,12 +1,72 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ===== Global Styles for SoccerConnect Admin ===== */
 
-/* Your global admin styles */
-body {
-  color: #0a0a0a;
+/* Reset & base smoothing */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", "Roboto", "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   background-color: #fafafa;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", "Roboto",
-    "Helvetica Neue", Arial, sans-serif;
+  color: #0a0a0a;
+}
+
+/* Subtle fade when route changes */
+body {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Improve motion performance */
+* {
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* Scrollbar styling (subtle gray tone) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Links */
+a {
+  color: #2563eb;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Table style tweaks */
+table {
+  border-collapse: collapse;
+}
+th, td {
+  vertical-align: top;
+}
+
+/* Animation helpers */
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out both;
+}
+.animate-slideUpBlur {
+  animation: slideUpBlur 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Utility for smooth mounting transitions */
+.fade-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.fade-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }

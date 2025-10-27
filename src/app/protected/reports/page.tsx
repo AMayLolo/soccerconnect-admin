@@ -1,224 +1,253 @@
-// admin-web/src/app/protected/reports/page.tsx
-import { createClient } from '@supabase/supabase-js';
+"use client";
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+import { useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { createBrowserClient } from "@supabase/ssr";
+import TableShimmer from "@/components/admin/TableShimmer";
+import PaginationBar from "@/components/admin/PaginationBar";
+import StatusBadge from "@/components/admin/StatusBadge";
 
-// Tiny helper – server-side Supabase client using service role or anon.
-// We're using anon key here because you're already protecting this route
-// with auth + role checks in /protected/layout.tsx.
-function getServerClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  return createClient(url, key);
-}
+export const dynamic = "force-dynamic";
 
-// Types for what we're showing
-type ClubStat = {
-  club_id: string | null;
-  club_name: string;
-  review_count: number;
-  avg_rating: number;
+type Report = {
+  id: string;
+  review_id: string;
+  user_id: string | null;
+  reason: string | null;
+  created_at: string | null;
+  resolved: boolean | null;
 };
 
-export default async function ReportsPage() {
-  const supabase = getServerClient();
+const PAGE_SIZE = 25;
 
-  // 1. Total reviews overall
-  const { count: totalReviews } = await supabase
-    .from('reviews')
-    .select('*', { count: 'exact', head: true });
-
-  // 2. Ratings per club
-  //
-  // We’ll select:
-  //   - club_id
-  //   - clubs.name (via foreign key)
-  //   - rating
-  //
-  // Then we’ll group/aggregate in Node because Supabase JS client
-  // doesn't do GROUP BY for you without RPC.
-  const { data: rawRows, error } = await supabase
-    .from('reviews')
-    .select(
-      `
-        club_id,
-        rating,
-        clubs (
-          name
-        )
-      `
-    )
-    .limit(500); // safety cap for now
-
-  if (error) {
-    console.error('reports query error:', error.message);
-  }
-
-  // Aggregate in-memory
-  const statsMap: Record<
-    string,
-    { name: string; sum: number; count: number }
-  > = {};
-
-  for (const row of rawRows ?? []) {
-    const clubId = row.club_id ?? 'unknown';
-    const clubName =
-      (row as any).clubs?.name ??
-      (row.club_id ? 'Unknown Club' : 'No Club');
-
-    if (!statsMap[clubId]) {
-      statsMap[clubId] = { name: clubName, sum: 0, count: 0 };
-    }
-
-    // rating is smallint in DB, could be null
-    if (row.rating != null) {
-      statsMap[clubId].sum += row.rating;
-    }
-    statsMap[clubId].count += 1;
-  }
-
-  const clubStats: ClubStat[] = Object.entries(statsMap).map(
-    ([club_id, info]) => ({
-      club_id,
-      club_name: info.name,
-      review_count: info.count,
-      avg_rating:
-        info.count > 0 ? Number((info.sum / info.count).toFixed(2)) : 0,
-    })
-  );
-
-  // Sort: highest review_count first
-  clubStats.sort((a, b) => b.review_count - a.review_count);
-
-  return (
-    <main className="p-6 flex flex-col gap-6">
-      {/* Top header row */}
-      <header className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold leading-tight">
-          Reports & Trends
-        </h1>
-        <p className="text-sm text-gray-600">
-          High-level signals across clubs based on recent reviews.
-        </p>
-      </header>
-
-      {/* KPI cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase text-gray-500 tracking-wide">
-            Total Reviews
-          </p>
-          <p className="text-3xl font-semibold mt-1">
-            {totalReviews ?? 0}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase text-gray-500 tracking-wide">
-            Clubs Reviewed
-          </p>
-          <p className="text-3xl font-semibold mt-1">
-            {clubStats.length}
-          </p>
-        </div>
-
-        {/* Example placeholder metrics for now */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase text-gray-500 tracking-wide">
-            Avg Rating (All Clubs)
-          </p>
-          <p className="text-3xl font-semibold mt-1">
-            {calcGlobalAvg(clubStats)}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase text-gray-500 tracking-wide">
-            Most Reviewed Club
-          </p>
-          <p className="text-base font-medium mt-1 leading-tight">
-            {clubStats[0]
-              ? clubStats[0].club_name
-              : '—'}
-          </p>
-          <p className="text-xs text-gray-500">
-            {clubStats[0]
-              ? `${clubStats[0].review_count} reviews`
-              : 'No data'}
-          </p>
-        </div>
-      </section>
-
-      {/* Table: clubs by volume */}
-      <section className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        <div className="border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-800">
-            Reviews by Club
-          </h2>
-          <p className="text-xs text-gray-500">
-            Sorted by volume
-          </p>
-        </div>
-
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-600 text-xs uppercase tracking-wide">
-            <tr>
-              <th className="px-4 py-2 font-medium">Club</th>
-              <th className="px-4 py-2 font-medium text-right">
-                Reviews
-              </th>
-              <th className="px-4 py-2 font-medium text-right">
-                Avg Rating
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {clubStats.length === 0 ? (
-              <tr>
-                <td
-                  className="px-4 py-6 text-center text-gray-500 text-sm"
-                  colSpan={3}
-                >
-                  No reviews yet.
-                </td>
-              </tr>
-            ) : (
-              clubStats.map((stat) => (
-                <tr
-                  key={stat.club_id}
-                  className="border-t border-gray-100"
-                >
-                  <td className="px-4 py-3 text-gray-900 font-medium">
-                    {stat.club_name}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {stat.review_count}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {stat.avg_rating.toFixed(2)}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </section>
-
-      {/* TODO: later */}
-      {/* charts / time filters / sentiment breakdown */}
-    </main>
-  );
+function formatDate(ts: string | null) {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
-// simple helper to compute global average rating across all clubs
-function calcGlobalAvg(list: ClubStat[]) {
-  let totalReviews = 0;
-  let weightedSum = 0;
-  for (const c of list) {
-    totalReviews += c.review_count;
-    weightedSum += c.avg_rating * c.review_count;
+function timeAgo(ts: string | null) {
+  if (!ts) return "";
+  const diff = Date.now() - new Date(ts).getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days <= 0) return "Today";
+  if (days === 1) return "1 day ago";
+  if (days < 7) return `${days} days ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks} week${weeks > 1 ? "s" : ""} ago`;
+  const months = Math.floor(days / 30);
+  return `${months} month${months > 1 ? "s" : ""} ago`;
+}
+
+export default function ReportsPage() {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [reports, setReports] = useState<Report[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const [filter, setFilter] = useState(searchParams.get("filter") || "all");
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
+
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (filter !== "all") params.set("filter", filter);
+      if (search) params.set("search", search);
+      if (page > 1) params.set("page", String(page));
+      router.replace(`/protected/reports?${params.toString()}`);
+      fetchData();
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [filter, search, page]);
+
+  async function fetchData() {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from("review_reports")
+        .select("*", { count: "exact" })
+        .range(from, to)
+        .order("created_at", { ascending: false });
+
+      if (filter === "resolved") query = query.eq("resolved", true);
+      if (filter === "unresolved") query = query.eq("resolved", false);
+
+      if (search) {
+        query = query.or(
+          `reason.ilike.%${search}%,review_id.ilike.%${search}%`
+        );
+      }
+
+      const { data, count, error } = await query;
+      if (error) throw error;
+
+      setReports(data || []);
+      setTotal(count || 0);
+    } catch (err) {
+      console.error("Error loading reports:", err);
+    } finally {
+      setLoading(false);
+    }
   }
-  if (!totalReviews) return '—';
-  return (weightedSum / totalReviews).toFixed(2);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const startItem = from + 1;
+  const endItem = Math.min(to + 1, total);
+
+  function resetFilters() {
+    setSearch("");
+    setFilter("all");
+    setPage(1);
+    router.replace("/protected/reports");
+    fetchData();
+  }
+
+  return (
+    <section className="space-y-6 animate-fadeIn">
+      {/* Header */}
+      <header className="animate-slideUpBlur delay-75 flex flex-col gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+            Reports
+          </h1>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Review moderation queue and report details
+          </p>
+        </div>
+
+        {/* Search */}
+        <input
+          type="text"
+          placeholder="Search by reason or review ID..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+        />
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-2">
+          {["all", "resolved", "unresolved"].map((key) => (
+            <button
+              key={key}
+              onClick={() => {
+                setFilter(key);
+                setPage(1);
+              }}
+              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
+                filter === key
+                  ? "border-blue-500 bg-blue-600 text-white shadow-sm dark:bg-blue-500"
+                  : "border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+              }`}
+            >
+              {key === "all"
+                ? "All"
+                : key.charAt(0).toUpperCase() + key.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Reset link */}
+        <button
+          onClick={resetFilters}
+          className="w-fit text-xs text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+        >
+          Reset Filters ↺
+        </button>
+      </header>
+
+      {/* Table container */}
+      <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          startItem={startItem}
+          endItem={endItem}
+          total={total}
+          onPageChange={setPage}
+        />
+
+        <div className="relative overflow-x-auto">
+          {loading && <TableShimmer />}
+          <table className="min-w-full text-sm text-neutral-800 dark:text-neutral-200">
+            <thead className="sticky top-0 bg-neutral-100 text-[11px] uppercase text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
+              <tr>
+                <th className="px-4 py-2 text-left font-medium">Reason</th>
+                <th className="px-4 py-2 text-left font-medium">Review ID</th>
+                <th className="px-4 py-2 text-left font-medium">User</th>
+                <th className="px-4 py-2 text-left font-medium whitespace-nowrap">
+                  Created
+                </th>
+                <th className="px-4 py-2 text-left font-medium">Status</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {reports.map((rep, i) => (
+                <tr
+                  key={rep.id}
+                  className={`border-t border-neutral-200 dark:border-neutral-700 ${
+                    i % 2 ? "bg-neutral-50 dark:bg-neutral-800/40" : ""
+                  }`}
+                >
+                  <td className="px-4 py-2 text-neutral-700 dark:text-neutral-300 break-words max-w-md">
+                    {rep.reason || "(no reason provided)"}
+                  </td>
+                  <td className="px-4 py-2">
+                    <a
+                      href={`/protected/reviews`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {rep.review_id.slice(0, 8)}...
+                    </a>
+                  </td>
+                  <td className="px-4 py-2 text-neutral-600 dark:text-neutral-400">
+                    {rep.user_id ? rep.user_id.slice(0, 8) + "..." : "—"}
+                  </td>
+                  <td className="px-4 py-2 text-neutral-600 dark:text-neutral-400 whitespace-nowrap">
+                    <div>{formatDate(rep.created_at)}</div>
+                    <div className="text-[11px] text-neutral-500 dark:text-neutral-500">
+                      {timeAgo(rep.created_at)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2">
+                    <StatusBadge value={!!rep.resolved} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          startItem={startItem}
+          endItem={endItem}
+          total={total}
+          onPageChange={setPage}
+        />
+      </div>
+    </section>
+  );
 }

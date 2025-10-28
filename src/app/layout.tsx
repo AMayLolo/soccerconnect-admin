@@ -1,31 +1,15 @@
 import "./globals.css";
-import { Toaster } from "react-hot-toast";
-import LoadingOverlay from "@/components/LoadingOverlay";
+import type { Metadata } from "next";
 
-export const metadata = {
-  title: "Soccer Connect",
-  description: "Admin Dashboard",
+export const metadata: Metadata = {
+  title: "SoccerConnect Admin",
+  description: "Moderation and club management dashboard",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
-        <LoadingOverlay />
-
-        {children}
-
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: "#333",
-              color: "#fff",
-            },
-          }}
-        />
-      </body>
+    <html lang="en" className="bg-gray-50 text-gray-900">
+      <body className="min-h-screen antialiased">{children}</body>
     </html>
   );
 }

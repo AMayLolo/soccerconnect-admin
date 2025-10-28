@@ -1,53 +1,40 @@
-// src/utils/auth.ts
-import { redirect } from "next/navigation";
-import { createServerClientInstance } from "@/utils/supabase/server";
+"use server";
+
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 /**
- * Get the currently authenticated Supabase user on the server.
- * Returns the user object or null.
+ * Returns the authenticated user + linked profile record.
+ * Uses Supabase Service Role for server-side access.
  */
 export async function getCurrentUser() {
-  try {
-    const supabase = await createServerClientInstance();
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
+  const cookieStore = await cookies(); // ✅ Now async in Next.js 16
 
-    if (error) {
-      console.warn(
-        "getCurrentUser supabase.auth.getUser error:",
-        error.message
-      );
-      return null;
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        get: (name) => cookieStore.get(name)?.value,
+      },
     }
+  );
 
-    if (!user) return null;
-    return user;
-  } catch (err) {
-    console.error("getCurrentUser error:", err);
-    return null;
-  }
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) return null;
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, full_name, role, club_id")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError) console.warn("Profile fetch error:", profileError.message);
+
+  return { ...user, profile };
 }
 
-/**
- * Require a logged-in user.
- * - If not logged in, redirect("/login") which stops rendering on the server.
- * - If logged in, returns the user.
- */
-export async function requireCurrentUser() {
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-  return user;
-}
-
-/**
- * Backwards compatibility alias.
- * Older code imports { requireUser } from "@/utils/auth".
- * We'll keep that working by forwarding to requireCurrentUser().
- */
-export async function requireUser() {
-  return requireCurrentUser();
-}

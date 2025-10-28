@@ -1,4 +1,3 @@
-// src/app/login/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -16,26 +15,32 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    setLoading(false);
-
     if (error) {
       setError(error.message);
+      setLoading(false);
       return;
     }
 
-    window.location.href = "/protected";
+    // ✅ Refresh cookies from Supabase after login
+    const event = new Event("signed_in");
+    window.dispatchEvent(event);
+
+    // ✅ Redirect after a tiny delay to let Supabase store cookies
+    setTimeout(() => {
+      window.location.href = "/protected";
+    }, 300);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <form
         onSubmit={handleLogin}
-        className="bg-white p-6 rounded-lg shadow-md w-96 space-y-4"
+        className="bg-white p-8 rounded-xl shadow-md w-96 space-y-4"
       >
         <h1 className="text-2xl font-bold text-center text-gray-900">
           SoccerConnect Admin
@@ -45,13 +50,15 @@ export default function LoginPage() {
         </p>
 
         {error && (
-          <div className="text-red-600 text-sm text-center">{error}</div>
+          <div className="text-red-600 text-sm text-center bg-red-50 p-2 rounded">
+            {error}
+          </div>
         )}
 
         <input
           type="email"
           placeholder="Email"
-          className="w-full border rounded p-2"
+          className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -59,7 +66,7 @@ export default function LoginPage() {
         <input
           type="password"
           placeholder="Password"
-          className="w-full border rounded p-2"
+          className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -68,7 +75,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition disabled:opacity-50"
         >
           {loading ? "Signing in..." : "Sign In"}
         </button>

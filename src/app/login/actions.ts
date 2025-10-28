@@ -1,79 +1,89 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-
-// Local CookieOptions type (Next.js doesn’t export it)
-type CookieOptions = {
-  maxAge?: number;
-  httpOnly?: boolean;
-  secure?: boolean;
-  sameSite?: "lax" | "strict" | "none";
-  path?: string;
-  domain?: string;
-};
 
 export async function loginAction(formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
-  const redirectTo =
-    (formData.get("redirectTo") as string | null) || "/protected";
 
   if (!email || !password) {
-    return { error: "Email and password are required." };
+    return { error: "Please provide both email and password." };
   }
 
-  // ✅ Create Supabase client
-  const supabase = createClient(
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            for (const { name, value, options } of cookiesToSet) {
+              cookieStore.set(name, value, options);
+            }
+          } catch (err) {
+            console.error("Error setting cookies:", err);
+          }
+        },
+      },
+    }
   );
 
-  // ✅ Try sign-in
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
-  if (error || !data.session) {
-    console.error("[loginAction] Login failed:", error?.message);
-    return { error: "Invalid email or password." };
+  if (error) {
+    console.error("[loginAction] Error:", error.message);
+    return { error: "Invalid email or password" };
   }
 
-  const accessToken = data.session.access_token;
-  const refreshToken = data.session.refresh_token;
-  const isProd = process.env.NODE_ENV === "production";
+  const session = data.session;
+  if (!session) {
+    console.error("[loginAction] No session returned after login");
+    return { error: "Login failed: no session received" };
+  }
 
-  // ✅ Cookie base configuration
-  const baseCookieOptions: CookieOptions = {
+  // ✅ Define cookie options
+  const isProd = process.env.NODE_ENV === "production";
+  const accessCookieOptions: any = {
+    maxAge: 60 * 60, // 1 hour
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? "none" : "lax",
     path: "/",
   };
 
-  const accessCookieOptions: CookieOptions = {
-    ...baseCookieOptions,
-    maxAge: 60 * 60, // 1 hour
-  };
-
-  const refreshCookieOptions: CookieOptions = {
-    ...baseCookieOptions,
+  const refreshCookieOptions: any = {
     maxAge: 60 * 60 * 24 * 7, // 7 days
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+    path: "/",
   };
 
-  // ✅ Add domain for production
+  // ✅ Add cross-subdomain cookie domain for production
   if (isProd) {
-    accessCookieOptions.domain = ".soccerconnectusa.com";
-    refreshCookieOptions.domain = ".soccerconnectusa.com";
+    const PROD_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || ".soccerconnectusa.com";
+    accessCookieOptions.domain = PROD_DOMAIN;
+    refreshCookieOptions.domain = PROD_DOMAIN;
+
+    accessCookieOptions.sameSite = "none";
+    refreshCookieOptions.sameSite = "none";
+    accessCookieOptions.secure = true;
+    refreshCookieOptions.secure = true;
   }
 
-  // ✅ Set cookies securely
-  const cookieStore = await cookies();
-  cookieStore.set("sb-access-token", accessToken, accessCookieOptions);
-  cookieStore.set("sb-refresh-token", refreshToken, refreshCookieOptions);
+  // ✅ Set cookies
+  cookieStore.set("sb-access-token", session.access_token, accessCookieOptions);
+  cookieStore.set("sb-refresh-token", session.refresh_token, refreshCookieOptions);
 
-  // ✅ Redirect to protected area
-  redirect(redirectTo);
+  console.log("[loginAction] Login success — redirecting to /protected");
+  redirect("/protected");
 }

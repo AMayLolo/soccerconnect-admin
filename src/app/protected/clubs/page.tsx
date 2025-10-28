@@ -2,16 +2,16 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export default async function ClubsPage() {
+  // ✅ cookies() is async in Next.js 16
   const cookieStore = await cookies();
 
-  // ✅ Hybrid syntax: works on all Supabase SSR versions
+  // ✅ use the new getAll() helper built into cookieStore
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll: () => Array.from(cookieStore.getAll()),
-        setAll: () => {}, // not needed for read-only
+        getAll: () => cookieStore.getAll(), // no Array.from, just direct
       },
     }
   );
@@ -22,15 +22,14 @@ export default async function ClubsPage() {
     .order("name");
 
   if (error) {
-    console.error("Error fetching clubs:", error.message);
+    console.error("[ClubsPage] Supabase error:", error.message);
   }
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Clubs</h1>
-
       {clubs?.length ? (
-        <ul className="divide-y border rounded-lg bg-white">
+        <ul className="divide-y rounded-lg border bg-white">
           {clubs.map((club) => (
             <li key={club.id} className="p-4 hover:bg-gray-50">
               <div className="font-medium">{club.name}</div>

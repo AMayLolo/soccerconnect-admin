@@ -1,79 +1,57 @@
-import { getSupabaseServer } from "@/lib/supabaseServer";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-interface Club {
-  name: string | null;
-}
-
-interface Review {
-  title: string | null;
-  clubs: Club[] | null;
-}
-
-interface Report {
-  id: string;
-  reason: string | null;
-  resolved: boolean;
-  created_at: string;
-  reviews: Review[] | null;
-}
-
-export default async function ProtectedDashboard() {
-  const supabase = await getSupabaseServer();
-
-  const { data, error } = await supabase
-    .from("review_reports")
-    .select("id, reason, resolved, created_at, reviews(title, clubs(name))")
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  if (error) {
-    console.error("Error loading reports:", error.message);
-  }
-
-  const reports = (data ?? []) as Report[];
-
+export default function AdminDashboard() {
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+    <div className="space-y-8">
+      <section>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Welcome to SoccerConnect Admin
+        </h1>
+        <p className="text-gray-600 mt-2">
+          Use this dashboard to manage clubs, review reports, and moderate user feedback.
+        </p>
+      </section>
 
-      <table className="min-w-full border-collapse border border-gray-200">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="border p-2 text-left">Review Title</th>
-            <th className="border p-2 text-left">Club</th>
-            <th className="border p-2 text-left">Reason</th>
-            <th className="border p-2 text-left">Resolved</th>
-            <th className="border p-2 text-left">Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reports.length ? (
-            reports.map((r) => (
-              <tr key={r.id} className="border-t">
-                <td className="p-2">{r.reviews?.[0]?.title ?? "—"}</td>
-                <td className="p-2">{r.reviews?.[0]?.clubs?.[0]?.name ?? "—"}</td>
-                <td className="p-2">{r.reason ?? "—"}</td>
-                <td className="p-2 text-center">
-                  {r.resolved ? "✅" : "❌"}
-                </td>
-                <td className="p-2">
-                  {r.created_at
-                    ? new Date(r.created_at).toLocaleDateString()
-                    : "—"}
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={5} className="p-4 text-center text-gray-500">
-                No flagged reports found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Clubs */}
+        <Link
+          href="/protected/club"
+          className="bg-white border rounded-lg p-6 shadow-sm hover:shadow-md transition"
+        >
+          <h2 className="text-xl font-semibold text-gray-800">⚽ Clubs</h2>
+          <p className="text-gray-600 mt-2 text-sm">
+            View and manage all registered clubs.
+          </p>
+        </Link>
+
+        {/* Reports */}
+        <Link
+          href="/protected/reports"
+          className="bg-white border rounded-lg p-6 shadow-sm hover:shadow-md transition"
+        >
+          <h2 className="text-xl font-semibold text-gray-800">📋 Reports</h2>
+          <p className="text-gray-600 mt-2 text-sm">
+            Review flagged reports and take action.
+          </p>
+        </Link>
+
+        {/* Reviews */}
+        <Link
+          href="/protected/reviews"
+          className="bg-white border rounded-lg p-6 shadow-sm hover:shadow-md transition"
+        >
+          <h2 className="text-xl font-semibold text-gray-800">💬 Reviews</h2>
+          <p className="text-gray-600 mt-2 text-sm">
+            Moderate user-submitted reviews and ratings.
+          </p>
+        </Link>
+      </section>
+
+      <footer className="pt-6 border-t text-center text-gray-500 text-sm">
+        © {new Date().getFullYear()} SoccerConnect Admin
+      </footer>
     </div>
   );
 }

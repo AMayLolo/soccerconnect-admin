@@ -1,11 +1,11 @@
-// src/app/protected/layout.tsx
+import { LogoutButton } from "@/components/LogoutButton";
 import { getCurrentUser } from "@/utils/auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "SoccerConnect Admin",
-  description: "Moderation and club management dashboard",
+  title: "Admin Dashboard",
+  description: "SoccerConnect Admin Panel",
 };
 
 export default async function ProtectedLayout({
@@ -15,25 +15,25 @@ export default async function ProtectedLayout({
 }) {
   const user = await getCurrentUser();
 
-  // 🚫 Redirect unauthenticated users
-  if (!user) redirect("/login");
+  if (!user) {
+    redirect("/login");
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b p-4 flex justify-between items-center">
-        <h1 className="text-lg font-semibold text-gray-800">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      {/* Top Navbar */}
+      <header className="flex justify-between items-center p-4 border-b bg-white shadow-sm">
+        <Link href="/protected" className="text-xl font-semibold">
           SoccerConnect Admin
-        </h1>
-        <div className="space-x-4 text-sm text-gray-600">
-          <Link href="/protected">Dashboard</Link>
-          <Link href="/protected/flagged">Flagged Reports</Link>
-          <Link href="/protected/reports">Reports</Link>
-          <Link href="/signout" className="text-red-500">
-            Sign Out
-          </Link>
+        </Link>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-600">{user.email}</span>
+          <LogoutButton />
         </div>
-      </nav>
-      <main className="p-6">{children}</main>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto p-6">{children}</main>
     </div>
   );
 }

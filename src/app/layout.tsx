@@ -1,19 +1,24 @@
 import "./globals.css";
-import { SupabaseSessionListener } from "@/components/SupabaseSessionListener";
-import SessionExpiredToast from "@/components/SessionExpiredToast";
+import type { Metadata } from "next";
+import { SessionExpiredBanner } from "@/components/SessionExpiredBanner";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "SoccerConnect Admin",
-  description: "Admin dashboard",
+  description: "Admin dashboard for SoccerConnect moderation",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className="bg-gray-50 text-gray-900">
-      <body className="min-h-screen antialiased">
-        <SupabaseSessionListener />
-        <SessionExpiredToast />
+      <body>
         {children}
+
+        {/* 🔔 session-expired toast lives here, on every page */}
+        <SessionExpiredBanner />
       </body>
     </html>
   );

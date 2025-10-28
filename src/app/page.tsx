@@ -1,8 +1,13 @@
-export default function HomePage() {
-  return (
-    <main className="flex flex-col items-center justify-center min-h-screen">
-      <h1 className="text-3xl font-bold text-primary">SoccerConnect Admin</h1>
-      <p className="text-gray-600 mt-2">Welcome to the moderation dashboard</p>
-    </main>
-  );
+// src/app/page.tsx
+import { getCurrentUser } from "@/utils/auth";
+import { redirect } from "next/navigation";
+
+export default async function HomePage() {
+  const user = await getCurrentUser();
+
+  // ✅ If logged in → go to dashboard
+  if (user) redirect("/protected");
+
+  // ✅ Otherwise → go to login
+  redirect("/login");
 }

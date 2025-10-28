@@ -1,7 +1,7 @@
 // src/app/protected/layout.tsx
 import { getCurrentUser } from "@/utils/auth";
-import { redirect } from "next/navigation";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "SoccerConnect Admin",

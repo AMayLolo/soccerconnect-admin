@@ -1,6 +1,13 @@
-@import "tailwindcss/preflight";
-@import "tailwindcss/utilities";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* Optional tweaks */
+html,
 body {
-  @apply bg-green-100;
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
+
+a {
+  @apply text-blue-600 hover:text-blue-700;
 }

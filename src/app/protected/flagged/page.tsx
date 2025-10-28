@@ -1,25 +1,31 @@
-import { createServerClientInstance } from "@/utils/supabase/server";
-import { FlaggedTableClient } from "./FlaggedTableClient";
-
-export const metadata = {
-  title: "Flagged Reports | SoccerConnect Admin",
-  description: "Moderate reported reviews and mark them resolved.",
-};
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import FlaggedTableClient from "./FlaggedTableClient";
 
 export default async function FlaggedPage() {
-  const supabase = await createServerClientInstance();
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => Array.from(cookieStore.getAll()),
+        setAll: () => {},
+      },
+    }
+  );
 
   const { data: reports, error } = await supabase
-    .from("review_reports")
+    .from("reports") // ✅ your table
     .select("*")
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Error fetching flagged reports:", error.message);
+    console.error("Error loading flagged reports:", error.message);
   }
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Flagged Reports</h1>
       <FlaggedTableClient reports={reports || []} />
     </div>

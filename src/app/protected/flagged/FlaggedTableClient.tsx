@@ -1,127 +1,116 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import toast from "react-hot-toast";
-import { handleResolve } from "./resolveFlaggedAction";
+import { useState } from "react";
+import { ResolveFlaggedButton } from "./ResolveFlaggedButton";
 
-// shape of each flagged report row
-export type FlaggedReport = {
+type Report = {
   id: string;
-  report_type: string | null;
-  comment: string | null;
-  status: string | null;
-  created_at: string | null;
-  club_name: string | null;
+  review_id: string;
+  reason?: string;
+  reported_by?: string;
+  resolved?: boolean;
 };
 
-type Props = {
-  initialReports: FlaggedReport[];
-};
+export function FlaggedTableClient({ reports }: { reports: Report[] }) {
+  const [filter, setFilter] = useState<"all" | "pending" | "resolved">("all");
 
-export default function FlaggedTableClient({ initialReports }: Props) {
-  const [reports, setReports] = useState(initialReports);
-  const [isPending, startTransition] = useTransition();
+  const filteredReports = reports.filter((r) => {
+    if (filter === "pending") return !r.resolved;
+    if (filter === "resolved") return r.resolved;
+    return true;
+  });
 
-  // call the server action to resolve a report,
-  // then optimistically update UI
-  async function onResolve(reportId: string) {
-    startTransition(async () => {
-      try {
-        const formData = new FormData();
-        formData.set("report_id", reportId);
-
-        // call the server action directly
-        await handleResolve(formData);
-
-        // optimistic UI update: mark this row as resolved
-        setReports((prev) =>
-          prev.map((r) =>
-            r.id === reportId ? { ...r, status: "resolved" } : r
-          )
-        );
-
-        toast.success("Marked resolved ✅");
-      } catch (err) {
-        console.error("resolve failed", err);
-        toast.error("Failed to resolve");
-      }
-    });
+  if (!reports?.length) {
+    return <p className="text-gray-500">No flagged reports found.</p>;
   }
 
   return (
-    <div className="rounded border border-gray-300 bg-white overflow-x-auto">
-      <table className="min-w-full text-sm text-left text-gray-800">
-        <thead className="bg-gray-100 text-xs uppercase text-gray-600">
-          <tr>
-            <th className="px-3 py-2">Club</th>
-            <th className="px-3 py-2">Type</th>
-            <th className="px-3 py-2">Comment</th>
-            <th className="px-3 py-2">Status</th>
-            <th className="px-3 py-2">Created</th>
-            <th className="px-3 py-2">Action</th>
-          </tr>
-        </thead>
+    <div className="space-y-4">
+      {/* 🔹 Filter Buttons */}
+      <div className="flex gap-2">
+        {[
+          { key: "all", label: "All" },
+          { key: "pending", label: "Pending" },
+          { key: "resolved", label: "Resolved" },
+        ].map((b) => (
+          <button
+            key={b.key}
+            onClick={() => setFilter(b.key as typeof filter)}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+              filter === b.key
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+            }`}
+          >
+            {b.label}
+          </button>
+        ))}
+      </div>
 
-        <tbody>
-          {reports.length === 0 ? (
+      {/* 🔹 Results Summary */}
+      <p className="text-xs text-gray-500">
+        Showing {filteredReports.length} of {reports.length} reports
+      </p>
+
+      {/* 🔹 Reports Table */}
+      <div className="overflow-x-auto border rounded-xl bg-white shadow-sm">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-100 text-gray-700 uppercase text-xs font-semibold">
             <tr>
-              <td
-                colSpan={6}
-                className="px-3 py-4 text-center text-gray-500 italic"
-              >
-                No flagged reports 🎉
-              </td>
+              <th className="px-4 py-3 text-left">Review ID</th>
+              <th className="px-4 py-3 text-left">Reason</th>
+              <th className="px-4 py-3 text-left">Reported By</th>
+              <th className="px-4 py-3 text-left">Status</th>
+              <th className="px-4 py-3 text-left">Action</th>
             </tr>
-          ) : (
-            reports.map((r) => (
-              <tr
-                key={r.id}
-                className="border-t border-gray-200 align-top text-gray-900"
-              >
-                <td className="px-3 py-2 font-medium">{r.club_name}</td>
-                <td className="px-3 py-2">{r.report_type}</td>
-                <td className="px-3 py-2 whitespace-pre-wrap max-w-xs break-words">
-                  {r.comment}
-                </td>
-                <td className="px-3 py-2">
-                  {r.status === "resolved" ? (
-                    <span className="inline-block rounded bg-green-100 px-2 py-1 text-[10px] font-semibold text-green-700">
-                      Resolved
-                    </span>
-                  ) : (
-                    <span className="inline-block rounded bg-red-100 px-2 py-1 text-[10px] font-semibold text-red-700">
-                      {r.status ?? "open"}
-                    </span>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-xs text-gray-500">
-                  {r.created_at
-                    ? new Date(r.created_at).toLocaleString()
-                    : "—"}
-                </td>
-                <td className="px-3 py-2">
-                  {r.status === "resolved" ? (
-                    <button
-                      disabled
-                      className="cursor-not-allowed rounded bg-gray-200 px-2 py-1 text-[11px] font-medium text-gray-500"
-                    >
-                      Done
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => onResolve(r.id)}
-                      disabled={isPending}
-                      className="rounded bg-green-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                    >
-                      {isPending ? "..." : "Mark Resolved"}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y">
+            {filteredReports.map((r) => {
+              const isResolved = r.resolved;
+              return (
+                <tr
+                  key={r.id}
+                  className={`transition-colors ${
+                    isResolved
+                      ? "bg-gray-50 text-gray-500"
+                      : "hover:bg-gray-50 text-gray-800"
+                  }`}
+                >
+                  <td className="px-4 py-3 font-mono text-xs text-gray-700">
+                    {r.review_id}
+                  </td>
+
+                  <td className="px-4 py-3">{r.reason || "—"}</td>
+
+                  <td className="px-4 py-3">
+                    {r.reported_by || (
+                      <span className="italic text-gray-400">Unknown</span>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3">
+                    {isResolved ? (
+                      <span className="flex items-center gap-1 text-green-600 font-medium">
+                        ✅ Resolved
+                      </span>
+                    ) : (
+                      <span className="text-red-500 font-medium">Pending</span>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3">
+                    {!isResolved ? (
+                      <ResolveFlaggedButton reportId={r.id} />
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -1,57 +1,53 @@
 import Link from "next/link";
+import { getCurrentUser } from "@/utils/auth";
 
-export const dynamic = "force-dynamic";
+export const metadata = {
+  title: "Admin Dashboard | SoccerConnect",
+};
 
-export default function AdminDashboard() {
+export default async function DashboardPage() {
+  const user = await getCurrentUser();
+
   return (
-    <div className="space-y-8">
-      <section>
-        <h1 className="text-3xl font-bold text-gray-900">
-          Welcome to SoccerConnect Admin
-        </h1>
-        <p className="text-gray-600 mt-2">
-          Use this dashboard to manage clubs, review reports, and moderate user feedback.
-        </p>
-      </section>
+    <main className="max-w-6xl mx-auto p-6 space-y-6">
+      <h1 className="text-3xl font-semibold text-gray-900">
+        Welcome back, {user?.email?.split("@")[0] || "Admin"} 👋
+      </h1>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
         {/* Clubs */}
         <Link
-          href="/protected/club"
-          className="bg-white border rounded-lg p-6 shadow-sm hover:shadow-md transition"
+          href="/protected/clubs"
+          className="p-6 rounded-xl bg-white border hover:border-blue-400 hover:shadow-md transition"
         >
-          <h2 className="text-xl font-semibold text-gray-800">⚽ Clubs</h2>
-          <p className="text-gray-600 mt-2 text-sm">
-            View and manage all registered clubs.
+          <h2 className="text-xl font-bold text-gray-800 mb-1">Clubs</h2>
+          <p className="text-gray-500 text-sm">
+            Manage club profiles, update details, and verify league info.
           </p>
         </Link>
 
         {/* Reports */}
         <Link
           href="/protected/reports"
-          className="bg-white border rounded-lg p-6 shadow-sm hover:shadow-md transition"
+          className="p-6 rounded-xl bg-white border hover:border-blue-400 hover:shadow-md transition"
         >
-          <h2 className="text-xl font-semibold text-gray-800">📋 Reports</h2>
-          <p className="text-gray-600 mt-2 text-sm">
-            Review flagged reports and take action.
+          <h2 className="text-xl font-bold text-gray-800 mb-1">Flagged Reports</h2>
+          <p className="text-gray-500 text-sm">
+            Review and resolve reported reviews or content.
           </p>
         </Link>
 
         {/* Reviews */}
         <Link
           href="/protected/reviews"
-          className="bg-white border rounded-lg p-6 shadow-sm hover:shadow-md transition"
+          className="p-6 rounded-xl bg-white border hover:border-blue-400 hover:shadow-md transition"
         >
-          <h2 className="text-xl font-semibold text-gray-800">💬 Reviews</h2>
-          <p className="text-gray-600 mt-2 text-sm">
-            Moderate user-submitted reviews and ratings.
+          <h2 className="text-xl font-bold text-gray-800 mb-1">Reviews</h2>
+          <p className="text-gray-500 text-sm">
+            Moderate user reviews and feedback from across clubs.
           </p>
         </Link>
-      </section>
-
-      <footer className="pt-6 border-t text-center text-gray-500 text-sm">
-        © {new Date().getFullYear()} SoccerConnect Admin
-      </footer>
-    </div>
+      </div>
+    </main>
   );
 }

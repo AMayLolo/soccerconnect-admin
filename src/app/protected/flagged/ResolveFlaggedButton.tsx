@@ -1,20 +1,50 @@
-// src/app/protected/flagged/ResolveFlaggedButton.tsx
-// CLIENT COMPONENT
-
 "use client";
 
+import { useTransition } from "react";
 import { handleResolve } from "./resolveFlaggedAction";
+import toast from "react-hot-toast";
 
-export function ResolveFlaggedButton({ reportId }: { reportId: string }) {
+type ResolveFlaggedButtonProps = {
+  reportId: string;
+  resolved: boolean;
+};
+
+export function ResolveFlaggedButton({
+  reportId,
+  resolved,
+}: ResolveFlaggedButtonProps) {
+  const [isPending, startTransition] = useTransition();
+
+  async function onClick() {
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.append("reportId", reportId);
+
+      const res = await handleResolve(formData);
+
+      if (res.ok) {
+        toast.success("Report marked as resolved!");
+      } else {
+        toast.error(res.error || "Something went wrong");
+      }
+    });
+  }
+
   return (
-    <form action={handleResolve}>
-      <input type="hidden" name="report_id" value={reportId} />
-      <button
-        type="submit"
-        className="px-3 py-2 rounded bg-green-600 text-white text-sm font-medium hover:bg-green-700"
-      >
-        Mark Resolved
-      </button>
-    </form>
+    <button
+      onClick={onClick}
+      disabled={isPending || resolved}
+      className={`px-4 py-2 rounded-md text-white transition ${
+        resolved
+          ? "bg-gray-400 cursor-not-allowed"
+          : "bg-green-600 hover:bg-green-700"
+      }`}
+    >
+      {isPending
+        ? "Resolving..."
+        : resolved
+        ? "Resolved"
+        : "Mark as Resolved"}
+    </button>
   );
 }

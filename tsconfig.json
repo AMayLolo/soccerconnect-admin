@@ -2,11 +2,14 @@
   "compilerOptions": {
     /* ---- Core settings ---- */
     "target": "ESNext",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
-
     /* ---- TypeScript behavior ---- */
     "allowJs": true,
     "strict": true,
@@ -18,17 +21,25 @@
     "isolatedModules": true,
     "incremental": true,
     "noEmit": true,
-
     /* ---- Path helpers (optional but recommended) ---- */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
-    }
+      "@/*": [
+        "src/*"
+      ]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

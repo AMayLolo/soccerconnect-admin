@@ -1,23 +1,19 @@
 import "./globals.css";
-import type { Metadata } from "next";
 import { SupabaseSessionListener } from "@/components/SupabaseSessionListener";
+import SessionExpiredToast from "@/components/SessionExpiredToast";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "SoccerConnect Admin",
-  description: "Moderation and club management dashboard",
+  description: "Admin dashboard",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="bg-gray-50 text-gray-900">
       <body className="min-h-screen antialiased">
-        {children}
-        {/* ✅ Keeps Supabase cookies in sync */}
         <SupabaseSessionListener />
+        <SessionExpiredToast />
+        {children}
       </body>
     </html>
   );

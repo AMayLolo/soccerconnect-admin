@@ -1,47 +1,36 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import Link from "next/link";
+import { createSupabaseServerClient } from "@/utils/supabase/server";
 
 export default async function ClubsPage() {
-  // ✅ cookies() is async in Next.js 16
-  const cookieStore = await cookies();
+  const supabase = await createSupabaseServerClient();
+  const { data: clubs, error } = await supabase.from("clean_clubs_view").select("*").order("club_name");
 
-  // ✅ use the new getAll() helper built into cookieStore
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(), // no Array.from, just direct
-      },
-    }
-  );
-
-  const { data: clubs, error } = await supabase
-    .from("clubs")
-    .select("*")
-    .order("name");
-
-  if (error) {
-    console.error("[ClubsPage] Supabase error:", error.message);
-  }
+  if (error) console.error(error);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Clubs</h1>
-      {clubs?.length ? (
-        <ul className="divide-y rounded-lg border bg-white">
-          {clubs.map((club) => (
-            <li key={club.id} className="p-4 hover:bg-gray-50">
-              <div className="font-medium">{club.name}</div>
-              <div className="text-sm text-gray-500">
-                {club.city}, {club.state}
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-gray-500">No clubs found.</p>
-      )}
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold text-[var(--color-text)]">All Clubs</h1>
+        <Link
+          href="/protected/clubs/new"
+          className="px-4 py-2 bg-[var(--color-teal)] text-white rounded-md hover:opacity-90 transition"
+        >
+          + New Club
+        </Link>
+      </div>
+
+      {(!clubs || clubs.length === 0) && <p>No clubs found.</p>}
+
+      <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+        {clubs?.map((club) => (
+          <li key={club.id} className="py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+            <Link href={`/protected/clubs/${club.id}`} className="flex items-center justify-between">
+              <span className="font-medium">{club.club_name}</span>
+              <span className="text-sm text-gray-500">{club.state}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

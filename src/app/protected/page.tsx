@@ -1,53 +1,63 @@
+"use client";
+
 import Link from "next/link";
-import { getCurrentUser } from "@/utils/auth";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, Flag, Star, CheckCircle } from "lucide-react";
 
-export const metadata = {
-  title: "Admin Dashboard | SoccerConnect",
-};
-
-export default async function DashboardPage() {
-  const user = await getCurrentUser();
+export default function ProtectedDashboard() {
+  const cards = [
+    {
+      title: "Clubs",
+      description: "Manage club profiles, update details, and verify league info.",
+      icon: <Users className="h-6 w-6 text-primary" />,
+      href: "/protected/clubs",
+    },
+    {
+      title: "Flagged Reports",
+      description: "Review and resolve reported reviews or content.",
+      icon: <Flag className="h-6 w-6 text-red-500 dark:text-red-400" />,
+      href: "/protected/flagged",
+    },
+    {
+      title: "Approvals",
+      description: "Approve or deny club updates and moderation changes.",
+      icon: <CheckCircle className="h-6 w-6 text-green-500 dark:text-green-400" />,
+      href: "/protected/approvals",
+    },
+    {
+      title: "Reviews",
+      description: "Moderate user reviews and feedback from across clubs.",
+      icon: <Star className="h-6 w-6 text-yellow-500 dark:text-yellow-400" />,
+      href: "/protected/reviews",
+    },
+  ];
 
   return (
-    <main className="max-w-6xl mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-semibold text-gray-900">
-        Welcome back, {user?.email?.split("@")[0] || "Admin"} 👋
-      </h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-        {/* Clubs */}
-        <Link
-          href="/protected/clubs"
-          className="p-6 rounded-xl bg-white border hover:border-blue-400 hover:shadow-md transition"
-        >
-          <h2 className="text-xl font-bold text-gray-800 mb-1">Clubs</h2>
-          <p className="text-gray-500 text-sm">
-            Manage club profiles, update details, and verify league info.
-          </p>
-        </Link>
-
-        {/* Reports */}
-        <Link
-          href="/protected/reports"
-          className="p-6 rounded-xl bg-white border hover:border-blue-400 hover:shadow-md transition"
-        >
-          <h2 className="text-xl font-bold text-gray-800 mb-1">Flagged Reports</h2>
-          <p className="text-gray-500 text-sm">
-            Review and resolve reported reviews or content.
-          </p>
-        </Link>
-
-        {/* Reviews */}
-        <Link
-          href="/protected/reviews"
-          className="p-6 rounded-xl bg-white border hover:border-blue-400 hover:shadow-md transition"
-        >
-          <h2 className="text-xl font-bold text-gray-800 mb-1">Reviews</h2>
-          <p className="text-gray-500 text-sm">
-            Moderate user reviews and feedback from across clubs.
-          </p>
-        </Link>
+    <div className="space-y-8">
+      {/* Welcome header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Welcome back 👋 — use the panels below to manage SoccerConnect data.
+        </p>
       </div>
-    </main>
+
+      {/* Cards grid */}
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {cards.map((card) => (
+          <Link key={card.title} href={card.href}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-lg font-semibold">{card.title}</CardTitle>
+                {card.icon}
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{card.description}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }

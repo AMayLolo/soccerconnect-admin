@@ -1,10 +1,10 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { SessionExpiredBanner } from "@/components/SessionExpiredBanner";
+import { ThemeProvider } from "next-themes";
 
 export const metadata: Metadata = {
   title: "SoccerConnect Admin",
-  description: "Admin dashboard for SoccerConnect moderation",
+  description: "Moderation and club management dashboard",
 };
 
 export default function RootLayout({
@@ -13,12 +13,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="bg-gray-50 text-gray-900">
-      <body>
-        {children}
-
-        {/* 🔔 session-expired toast lives here, on every page */}
-        <SessionExpiredBanner />
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen flex flex-col bg-(--color-bg) text-(--color-text) transition-colors duration-300">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

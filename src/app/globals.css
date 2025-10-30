@@ -1,7 +1,6 @@
-/* src/styles/globals.css */
+/* src/app/globals.css */
 @import "tailwindcss";
 
-html,
 body {
-  @apply bg-gray-50 text-gray-900 antialiased;
+  @apply bg-gray-100 text-gray-900 antialiased;
 }

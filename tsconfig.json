@@ -1,33 +1,38 @@
 {
   "compilerOptions": {
-    /* ---- Core settings ---- */
-    "target": "ESNext",
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ESNext"
-    ],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "jsx": "react-jsx",
-    /* ---- TypeScript behavior ---- */
-    "allowJs": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "incremental": true,
-    "noEmit": true,
-    /* ---- Path helpers (optional but recommended) ---- */
+    /* === Core Path + Module Settings === */
     "baseUrl": ".",
     "paths": {
       "@/*": [
         "src/*"
       ]
     },
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    /* === React + JSX === */
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "target": "es2017",
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    /* === Output / Cleanliness === */
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "incremental": true,
+    /* === Type Roots (for node + supabase) === */
+    "types": [
+      "node"
+    ],
     "plugins": [
       {
         "name": "next"

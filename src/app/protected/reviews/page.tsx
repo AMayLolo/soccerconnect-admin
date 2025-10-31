@@ -2,7 +2,7 @@
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Role = "parent" | "staff" | "club_admin" | null;
 
@@ -52,13 +52,7 @@ export default function ClubReviewsAndDiscussionPage() {
   const [replyTarget, setReplyTarget] = useState<{ type: "review" | "discussion"; id: string } | null>(null);
   const [replyText, setReplyText] = useState("");
 
-  useEffect(() => {
-    if (!clubId) return;
-    fetchReviews();
-    fetchDiscussion();
-  }, [clubId]);
-
-  async function fetchReviews() {
+  const fetchReviews = useCallback(async () => {
     const { data, error } = await supabase
       .from("reviews")
       .select("*")
@@ -66,9 +60,9 @@ export default function ClubReviewsAndDiscussionPage() {
       .order("inserted_at", { ascending: false });
 
     if (!error && data) setReviews(data);
-  }
+  }, [supabase, clubId]);
 
-  async function fetchDiscussion() {
+  const fetchDiscussion = useCallback(async () => {
     const { data, error } = await supabase
       .from("discussions")
       .select("*")
@@ -76,7 +70,16 @@ export default function ClubReviewsAndDiscussionPage() {
       .order("inserted_at", { ascending: false });
 
     if (!error && data) setThreads(data);
-  }
+  }, [supabase, clubId]);
+
+  useEffect(() => {
+    if (!clubId) return;
+    const run = async () => {
+      await fetchReviews();
+      await fetchDiscussion();
+    };
+    run();
+  }, [clubId, fetchReviews, fetchDiscussion]);
 
   // -----------------------------
   // NESTED TREE BUILDERS

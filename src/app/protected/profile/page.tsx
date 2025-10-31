@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useCallback, useEffect, useState } from "react";
 
 export default function ProfilePage() {
   const supabase = createClientComponentClient();
@@ -12,21 +12,15 @@ export default function ProfilePage() {
   const [role, setRole] = useState("parent");
   const [clubs, setClubs] = useState<any[]>([]);
   const [statusMessage, setStatusMessage] = useState("");
-
-  useEffect(() => {
-    fetchProfile();
-    fetchClubs();
-  }, []);
-
-  async function fetchClubs() {
+  const fetchClubs = useCallback(async () => {
     const { data, error } = await supabase
       .from("clubs")
       .select("id, club_name")
       .order("club_name");
     if (!error && data) setClubs(data);
-  }
+  }, [supabase]);
 
-  async function fetchProfile() {
+  const fetchProfile = useCallback(async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -45,7 +39,15 @@ export default function ProfilePage() {
     }
 
     setLoading(false);
-  }
+  }, [supabase]);
+
+  useEffect(() => {
+    const run = async () => {
+      await fetchProfile();
+      await fetchClubs();
+    };
+    run();
+  }, [fetchProfile, fetchClubs]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

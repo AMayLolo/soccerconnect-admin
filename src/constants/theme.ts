@@ -8,7 +8,7 @@ const isAndroid = isWeb ? false : process.platform === 'android';
 const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
 
-export default {
+const theme = {
   light: {
     text: '#000',
     background: '#fff',
@@ -24,3 +24,5 @@ export default {
     tabIconSelected: tintColorDark,
   },
 };
+
+export default theme;

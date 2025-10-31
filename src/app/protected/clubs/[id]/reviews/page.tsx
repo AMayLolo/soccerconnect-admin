@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { useParams } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Role = "parent" | "staff" | "club_admin" | null;
 
@@ -55,14 +55,8 @@ export default function ClubReviewsAndDiscussionPage() {
   const [replyTarget, setReplyTarget] = useState<{ type: "review" | "discussion"; id: string } | null>(null);
   const [replyText, setReplyText] = useState("");
 
-  // Load data
-  useEffect(() => {
-    if (!clubId) return;
-    fetchReviews();
-    fetchDiscussion();
-  }, [clubId]);
-
-  async function fetchReviews() {
+  // Load data helpers
+  const fetchReviews = useCallback(async () => {
     const { data, error } = await supabase
       .from("reviews")
       .select("*")
@@ -72,9 +66,9 @@ export default function ClubReviewsAndDiscussionPage() {
     if (!error && data) {
       setReviews(data);
     }
-  }
+  }, [supabase, clubId]);
 
-  async function fetchDiscussion() {
+  const fetchDiscussion = useCallback(async () => {
     const { data, error } = await supabase
       .from("discussions")
       .select("*")
@@ -84,7 +78,17 @@ export default function ClubReviewsAndDiscussionPage() {
     if (!error && data) {
       setThreads(data);
     }
-  }
+  }, [supabase, clubId]);
+
+  // Load data effect — invoke async helpers so state updates happen asynchronously
+  useEffect(() => {
+    if (!clubId) return;
+    const run = async () => {
+      await fetchReviews();
+      await fetchDiscussion();
+    };
+    run();
+  }, [clubId, fetchReviews, fetchDiscussion]);
 
   // Build nested tree for reviews
   const { reviewParents, reviewReplies } = useMemo(() => {

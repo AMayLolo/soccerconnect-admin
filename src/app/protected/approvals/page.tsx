@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useCallback, useEffect, useState } from "react";
 
 export default function ApprovalsPage() {
   const supabase = createClientComponentClient();
@@ -9,7 +9,7 @@ export default function ApprovalsPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
-  async function fetchRequests() {
+  const fetchRequests = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("profiles")
@@ -28,11 +28,14 @@ export default function ApprovalsPage() {
 
     if (!error && data) setRequests(data);
     setLoading(false);
-  }
+  }, [supabase]);
 
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    const run = async () => {
+      await fetchRequests();
+    };
+    run();
+  }, [fetchRequests]);
 
   async function handleAction(userId: string, approve: boolean) {
     setMessage("");

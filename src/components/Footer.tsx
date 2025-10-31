@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { Logo } from "@/components/Logo";
 import Link from "next/link";
 
 export default function Footer() {
@@ -9,25 +9,19 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-600 dark:text-gray-400">
         <div className="flex items-center gap-3">
           <div className="relative w-32 h-10">
-            <Image
-              src="/branding/logos/soccerconnect_logo.svg"
-              alt="SoccerConnect Logo"
-              fill
-              className="object-contain"
-              priority
-            />
+            <Logo className="h-10 w-auto" />
           </div>
           <span>© {new Date().getFullYear()} SoccerConnect. All rights reserved.</span>
         </div>
 
         <nav className="flex gap-4">
-          <Link href="/privacy" className="hover:text-[var(--color-teal)] transition-colors">
+          <Link href="/privacy" className="hover:text-foreground transition-colors">
             Privacy
           </Link>
-          <Link href="/terms" className="hover:text-[var(--color-teal)] transition-colors">
+          <Link href="/terms" className="hover:text-foreground transition-colors">
             Terms
           </Link>
-          <Link href="/contact" className="hover:text-[var(--color-teal)] transition-colors">
+          <Link href="/contact" className="hover:text-foreground transition-colors">
             Contact
           </Link>
         </nav>

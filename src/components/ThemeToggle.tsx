@@ -1,16 +1,19 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
+import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { Sun, Moon } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 
 export default function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  // Avoid hydration mismatch
-  useEffect(() => setMounted(true), []);
+  // Avoid hydration mismatch — set asynchronously to avoid calling setState synchronously
+  useEffect(() => {
+    const id = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(id);
+  }, []);
   if (!mounted) return null;
 
   const isDark = theme === "dark";

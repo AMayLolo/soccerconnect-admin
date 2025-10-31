@@ -2,16 +2,14 @@ import type React from "react"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-import { Navbar } from "@/components/Navbar"
+// Navbar is provided by the protected layout; don't render it here to avoid duplication
 import { ArrowRight, BarChart3, CheckCircle, Flag, Star, User, Users } from "lucide-react"
 import Link from "next/link"
 
 export default function DashboardPage() {
   return (
-    <main className="min-h-screen bg-background">
-      <Navbar />
-
-      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20">
+    <>
+  <div className="bg-linear-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20">
         <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8">
           <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Admin Dashboard</h1>
           <p className="mt-2 text-sm text-muted-foreground">Manage your SoccerConnect platform</p>
@@ -83,7 +81,7 @@ export default function DashboardPage() {
           </p>
         </div>
       </footer>
-    </main>
+    </>
   )
 }
 

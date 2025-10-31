@@ -17,7 +17,7 @@ export default async function ProtectedLayout({
   if (!user) redirect("/login");
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Navbar (consolidated) */}
       <Navbar />
 

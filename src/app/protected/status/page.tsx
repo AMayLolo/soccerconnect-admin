@@ -1,8 +1,8 @@
 // src/app/protected/status/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import { useCallback, useEffect, useState } from "react";
 
 type Status = "checking" | "ok" | "error";
 
@@ -16,11 +16,7 @@ export default function SystemStatusPage() {
   const [authStatus, setAuthStatus] = useState<Status>("checking");
   const [deployTime, setDeployTime] = useState<string>("");
 
-  useEffect(() => {
-    checkHealth();
-  }, []);
-
-  async function checkHealth() {
+  const checkHealth = useCallback(async () => {
     try {
       // Check if Supabase is reachable
       const { error } = await supabase.from("reviews").select("id").limit(1);
@@ -41,7 +37,14 @@ export default function SystemStatusPage() {
       setSupabaseStatus("error");
       setAuthStatus("error");
     }
-  }
+  }, [supabase]);
+
+  useEffect(() => {
+    const run = async () => {
+      await checkHealth();
+    };
+    run();
+  }, [checkHealth]);
 
   const Indicator = ({ status }: { status: Status }) => {
     const color =

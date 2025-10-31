@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { useState, useEffect } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function ClubsPage() {
   const [clubs, setClubs] = useState<any[]>([]);
@@ -95,10 +96,13 @@ export default function ClubsPage() {
                   {/* Logo */}
                   <td className="px-4 py-3">
                     {club.logo_url ? (
-                      <img
+                      <Image
                         src={club.logo_url}
                         alt={club.club_name}
-                        className="h-8 w-8 rounded-full object-cover"
+                        width={32}
+                        height={32}
+                        className="rounded-full object-cover"
+                        unoptimized
                       />
                     ) : (
                       <span className="text-gray-400 text-xs">N/A</span>

@@ -1,9 +1,9 @@
-// https://docs.expo.dev/guides/using-eslint/
+// ESLint config for Next.js projects
 const { defineConfig } = require('eslint/config');
-const expoConfig = require('eslint-config-expo/flat');
+const nextConfig = require('eslint-config-next');
 
 module.exports = defineConfig([
-  expoConfig,
+  nextConfig,
   {
     ignores: ['dist/*'],
   },

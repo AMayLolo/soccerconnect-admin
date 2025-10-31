@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function NewClubPage() {
   const router = useRouter();
@@ -206,10 +207,13 @@ export default function NewClubPage() {
             }}
           >
             {preview ? (
-              <img
+              <Image
                 src={preview}
                 alt="Logo preview"
-                className="mx-auto w-32 h-32 object-contain mb-2"
+                width={128}
+                height={128}
+                className="mx-auto object-contain mb-2"
+                unoptimized
               />
             ) : (
               <p className="text-gray-500 text-sm">Drag & drop a logo here</p>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 
 export default function ClubAdminRequestPage() {
@@ -19,8 +19,7 @@ export default function ClubAdminRequestPage() {
   // -----------------------------
   // AUTH CHECK + FETCH CLUBS
   // -----------------------------
-  useEffect(() => {
-    async function init() {
+  const init = useCallback(async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -46,10 +45,14 @@ export default function ClubAdminRequestPage() {
       }
 
       setLoading(false);
-    }
+  }, [supabase, router]);
 
-    init();
-  }, []);
+  useEffect(() => {
+    const run = async () => {
+      await init();
+    };
+    run();
+  }, [init]);
 
   // -----------------------------
   // SUBMIT REQUEST

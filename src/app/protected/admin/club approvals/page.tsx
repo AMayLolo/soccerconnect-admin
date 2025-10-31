@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 
 const SUPER_ADMINS = [
@@ -24,7 +24,7 @@ export default function ClubApprovalsPage() {
   // -----------------------------
   // AUTH CHECK
   // -----------------------------
-  async function checkAuthorization() {
+  const checkAuthorization = useCallback(async () => {
     const {
       data: { user },
       error,
@@ -47,12 +47,12 @@ export default function ClubApprovalsPage() {
     }
 
     setAuthorized(true);
-  }
+  }, [supabase, router]);
 
   // -----------------------------
   // FETCH PENDING CLUB ADMIN REQUESTS
   // -----------------------------
-  async function fetchRequests() {
+  const fetchRequests = useCallback(async () => {
     setLoading(true);
 
     const { data, error } = await supabase
@@ -79,7 +79,7 @@ export default function ClubApprovalsPage() {
     }
 
     setLoading(false);
-  }
+  }, [supabase]);
 
   // -----------------------------
   // HANDLE APPROVE / REJECT
@@ -112,12 +112,19 @@ export default function ClubApprovalsPage() {
   // EFFECTS
   // -----------------------------
   useEffect(() => {
-    checkAuthorization();
-  }, []);
+    const run = async () => {
+      await checkAuthorization();
+    };
+    run();
+  }, [checkAuthorization]);
 
   useEffect(() => {
-    if (authorized) fetchRequests();
-  }, [authorized]);
+    if (!authorized) return;
+    const run = async () => {
+      await fetchRequests();
+    };
+    run();
+  }, [authorized, fetchRequests]);
 
   // -----------------------------
   // UI

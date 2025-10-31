@@ -1,15 +1,12 @@
-// src/app/protected/layout.tsx
 import { getCurrentUser } from "@/utils/auth";
-import { redirect } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Toaster } from "react-hot-toast";
-import SidebarNav from "@/components/SidebarNav";
-import ThemeToggle from "@/components/ThemeToggle";
+import LogoImage from "@/components/LogoImage"; // ✅ Client component
 
 export const metadata = {
   title: "SoccerConnect Admin",
-  description: "Moderation and club management dashboard",
+  description: "Admin console for managing soccer clubs and reports.",
 };
 
 export default async function ProtectedLayout({
@@ -20,70 +17,62 @@ export default async function ProtectedLayout({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const email = user.email || "Unknown User";
-  const fullName =
-    (user.user_metadata && user.user_metadata.full_name) || email;
-
   return (
-    <div className="min-h-screen flex bg-gray-100 text-gray-900">
-      {/* SIDEBAR */}
-      <aside className="w-64 bg-white border-r flex flex-col justify-between">
-        <div>
-          {/* logo row */}
-          <div className="flex items-center gap-3 px-5 py-5 border-b">
-            {/* if your svg is named differently, change src here */}
-            <Image
-              src="/soccerconnect-logo.svg"
-              alt="SoccerConnect"
-              width={36}
-              height={36}
-              className="rounded-md"
-            />
-            <span className="text-lg font-semibold">SoccerConnect</span>
+    <div className="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+      {/* Navbar */}
+      <header className="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-3">
+          {/* Logo + Title */}
+          <div className="flex items-center gap-3">
+            <LogoImage />
+            <h1 className="text-lg font-semibold tracking-tight">
+              SoccerConnect Admin
+            </h1>
           </div>
 
-          <SidebarNav />
+          {/* Navigation links */}
+          <nav className="flex items-center gap-6 text-sm font-medium">
+            <Link
+              href="/protected"
+              className="hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/protected/clubs"
+              className="hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              Clubs
+            </Link>
+            <Link
+              href="/protected/flagged"
+              className="hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              Flagged
+            </Link>
+            <Link
+              href="/protected/reviews"
+              className="hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              Reviews
+            </Link>
+            <Link
+              href="/protected/approvals"
+              className="hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              Approvals
+            </Link>
+          </nav>
         </div>
+      </header>
 
-        {/* user footer */}
-        <div className="border-t px-5 py-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium leading-tight">{fullName}</p>
-            <p className="text-xs text-gray-500">Admin</p>
-          </div>
-          <ThemeToggle />
-        </div>
-      </aside>
+      {/* Page content */}
+      <main className="flex-1 px-8 py-8 max-w-7xl mx-auto w-full">
+        {children}
+      </main>
 
-      {/* MAIN */}
-      <div className="flex-1 flex flex-col">
-        {/* top bar */}
-        <header className="h-14 bg-white border-b flex items-center px-8">
-          <h1 className="text-xl font-semibold">Admin Dashboard</h1>
-        </header>
-
-        {/* page content */}
-        <main className="flex-1 p-8">
-          <div className="max-w-6xl mx-auto">{children}</div>
-        </main>
-
-        <footer className="border-t bg-white text-center py-4 text-sm text-gray-500">
-          © 2025 SoccerConnect ·{" "}
-          <Link href="/privacy" className="hover:underline">
-            Privacy
-          </Link>{" "}
-          ·{" "}
-          <Link href="/terms" className="hover:underline">
-            Terms
-          </Link>{" "}
-          ·{" "}
-          <Link href="/contact" className="hover:underline">
-            Contact
-          </Link>
-        </footer>
-      </div>
-
-      <Toaster position="bottom-right" />
+      {/* Toasts */}
+      <Toaster position="top-right" />
     </div>
   );
 }

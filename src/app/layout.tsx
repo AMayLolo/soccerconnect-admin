@@ -1,10 +1,10 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { ThemeProvider } from "next-themes";
+import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
   title: "SoccerConnect Admin",
-  description: "Moderation and club management dashboard",
+  description: "Admin console for managing soccer clubs and reviews",
 };
 
 export default function RootLayout({
@@ -14,10 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen flex flex-col bg-(--color-bg) text-(--color-text) transition-colors duration-300">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
-        </ThemeProvider>
+      <body className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+        {children}
+        <Toaster position="top-right" />
       </body>
     </html>
   );

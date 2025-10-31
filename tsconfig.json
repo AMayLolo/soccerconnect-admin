@@ -1,11 +1,8 @@
 {
   "compilerOptions": {
-    /* === Core Path + Module Settings === */
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ]
+      "@/*": ["src/*"]
     },
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -13,31 +10,18 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
-    /* === React + JSX === */
     "jsx": "react-jsx",
     "jsxImportSource": "react",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "target": "es2017",
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
-    /* === Output / Cleanliness === */
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "incremental": true,
-    /* === Type Roots (for node + supabase) === */
-    "types": [
-      "node"
-    ],
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
+    "types": ["react", "react-dom", "node"],
+    "plugins": [{ "name": "next" }]
   },
   "include": [
     "next-env.d.ts",
@@ -46,7 +30,5 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

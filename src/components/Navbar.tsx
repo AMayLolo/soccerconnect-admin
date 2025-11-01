@@ -1,23 +1,27 @@
-// Inline the header logo image directly to avoid importing a corrupted Logo component file
-// (Logo.tsx is being cleaned separately). Using the public SVG ensures stable rendering.
-import Logo from "@/components/Logo"
+// Render a server-side <img> for the logo so the asset appears as a separate
+// resource in DevTools (easier debugging) and to avoid client-only hydration
+// surprises while we root-cause the inline-SVG mismatch.
+import Logo from "@/components/LogoImg"
 import LogoutButton from "@/components/LogoutButton"
 import Link from "next/link"
 
 export function Navbar() {
   return (
-    <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+  <nav className="sticky top-4 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
   <div className="mx-auto max-w-7xl px-8 py-3">
-  <div className="flex h-32 items-center justify-between sm:h-40">
+  <div className="flex h-32 justify-between sm:h-40">
           {/* Logo and Navigation Links */}
           <div className="flex items-center gap-8">
-            <Link href="/protected" className="flex items-center">
-              {/* Provide an explicit inline height so the Logo has a definite computed
-                  height even if the corresponding Tailwind utility (e.g. .h-32)
-                  isn't present in the generated CSS during dev. */}
-              {/* Rely on Tailwind utility for definite height (h-20). */}
-              <Logo className="h-20 w-auto" />
+            <Link href="/protected" className="flex items-center h-full">
+              {/* Logo */}
+              <Logo className="h-12 sm:h-16 md:h-20 w-auto" />
             </Link>
+
+            {/* Title moved back to the left area, mid-size between previous and current */}
+            <div className="flex flex-col ml-8 sm:ml-10 navbar-title">
+              <h1 className="text-lg md:text-3xl lg:text-4xl font-extrabold tracking-tight whitespace-nowrap text-foreground">Admin Dashboard</h1>
+              <p className="text-xs text-muted-foreground hidden md:block">Manage your SoccerConnect platform</p>
+            </div>
 
             <div className="hidden md:flex items-center gap-6">
               <Link
@@ -54,7 +58,7 @@ export function Navbar() {
           </div>
 
           {/* Right side - User info and logout */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 navbar-right pr-6 sm:pr-8 flex-nowrap">
             <p className="hidden text-sm text-muted-foreground sm:block">Welcome back 👋</p>
             <LogoutButton />
           </div>

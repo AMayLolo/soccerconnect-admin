@@ -1,0 +1,6 @@
+const rc = require('tailwindcss/resolveConfig')
+const c = require('../tailwind.config.cjs')
+const r = rc(c)
+console.log('resolved has safelist?', Object.prototype.hasOwnProperty.call(r, 'safelist'))
+console.log('typeof safelist:', typeof r.safelist)
+console.log('safelist:', r.safelist)

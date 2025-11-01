@@ -1,7 +1,7 @@
 // src/app/login/page.tsx
 "use client";
 
-import Logo from "@/components/Logo";
+import Logo from "@/components/LogoImg";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 

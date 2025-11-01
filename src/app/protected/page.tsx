@@ -9,14 +9,8 @@ import Link from "next/link"
 export default function DashboardPage() {
   return (
     <>
-  <div className="bg-linear-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20">
-        <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Admin Dashboard</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Manage your SoccerConnect platform</p>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-7xl px-6 py-12 sm:px-8">
+      {/* top hero removed (title moved into header). Keep spacing for content */}
+      <div className="mx-auto max-w-7xl px-6 py-12 sm:px-8 mt-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <DashboardCard
             title="Clubs"

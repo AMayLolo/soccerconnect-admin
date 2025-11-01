@@ -59,7 +59,6 @@ export function Navbar() {
 
           {/* Right side - User info and logout */}
           <div className="flex items-center gap-2 navbar-right pr-6 sm:pr-8 flex-nowrap">
-            <p className="hidden text-sm text-muted-foreground sm:block">Welcome back 👋</p>
             <LogoutButton />
           </div>
         </div>

@@ -1,14 +1,12 @@
 /* src/app/globals.css */
 
-@plugin "tailwindcss-animate";
-@import "tailwindcss";
 @import "tailwindcss/preflight";
+@tailwind utilities;
 
-@custom-variant dark (&:is(.dark *)); /* ← Ensures base styles apply */
+/* Ensure dark variant applies to components inside .dark container */
+@custom-variant dark (&:is(.dark *));
 
-body {
-  @apply bg-gray-100 text-gray-900 antialiased;
-}
+/* Body background/foreground set inside @layer base further below using theme tokens. */
 
 @theme inline {
 
@@ -87,7 +85,8 @@ body {
 
   --radius: 0.625rem;
 
-  --background: oklch(1 0 0);
+  /* Use a subtle light gray background (similar to Tailwind's gray-100) */
+  --background: #f3f4f6;
 
   --foreground: oklch(0.147 0.004 49.25);
 
@@ -219,7 +218,58 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+  /* Default system sans font and body reset */
+  html {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+/* Protect inline logo colors and sizing from global SVG styles */
+.site-logo {
+  display: inline-block;
+  width: auto;
+  height: auto;
+  /* Allow Tailwind height utilities (h-12 / sm:h-14) to control sizing instead of a hard cap */
+  max-height: none;
+  vertical-align: middle;
+  /* Ensure the svg isn't clipped by parent containers */
+  overflow: visible;
+}
+
+/* Temporary debug helpers: visually outline the logo wrapper so we can
+   confirm the element is present and sized correctly in the page. Remove
+   these once the issue is resolved. */
+/* Debug outline removed — switched to inline debug on the Logo wrapper to
+   avoid globally outlining other elements. */
+.site-logo .shield {
+  fill: #0d7a9b !important;
+}
+.site-logo .wordmark {
+  fill: #1c3f60 !important;
+}
+
+/* Ensure the global content container keeps horizontal gutters even if a reset overrides utilities */
+.site-container {
+  /* match Tailwind: px-4 */
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+/* Responsive gutters to match px-4 sm:px-6 lg:px-8 */
+@media (min-width: 640px) {
+  .site-container {
+    padding-left: 1.5rem !important; /* sm:px-6 */
+    padding-right: 1.5rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .site-container {
+    padding-left: 2rem !important; /* lg:px-8 */
+    padding-right: 2rem !important;
   }
 }

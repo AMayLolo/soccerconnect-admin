@@ -1,7 +1,7 @@
 // src/app/login/page.tsx
 "use client";
 
-import { Logo } from "@/components/Logo";
+import Logo from "@/components/Logo";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -39,7 +39,7 @@ export default function LoginPage() {
       <div className="max-w-sm w-full bg-white p-8 rounded-xl shadow-md">
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <Logo className="w-48 h-auto" />
+          <Logo className="w-48 h-20" />
         </div>
 
         <h1 className="text-center text-lg font-semibold mb-4">Sign in to SoccerConnect Admin</h1>

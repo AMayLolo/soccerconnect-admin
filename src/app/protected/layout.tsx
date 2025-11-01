@@ -22,8 +22,10 @@ export default async function ProtectedLayout({
       <Navbar />
 
       {/* Page content */}
-      <main className="flex-1 px-8 py-8 max-w-7xl mx-auto w-full">
-        {children}
+      <main className="flex-1 w-full bg-background">
+        <div className="max-w-7xl mx-auto px-8 py-8">
+          {children}
+        </div>
       </main>
 
       {/* Toasts */}

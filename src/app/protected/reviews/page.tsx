@@ -1,6 +1,7 @@
 "use client";
 
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { Badge } from "@/components/ui/badge";
+import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -36,7 +37,7 @@ type DiscussionRow = {
 };
 
 export default function ClubReviewsAndDiscussionPage() {
-  const supabase = createClientComponentClient();
+  const supabase = getSupabaseBrowserClient();
   const params = useParams();
   const clubId = params?.id as string;
 
@@ -120,18 +121,14 @@ export default function ClubReviewsAndDiscussionPage() {
   function RoleBadge({ role }: { role: Role }) {
     if (!role) return null;
     const label = role === "club_admin" ? "Club Admin" : "Parent / Staff";
-    const color =
-      role === "club_admin"
-        ? "bg-purple-100 text-purple-700 border-purple-200"
-        : "bg-gray-100 text-gray-700 border-gray-200";
     const icon = role === "club_admin" ? "✅" : "👤";
     return (
-      <span
-        className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 border rounded ${color}`}
-      >
+      <Badge className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 ${
+        role === "club_admin" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-700"
+      }`}>
         <span>{icon}</span>
         {label}
-      </span>
+      </Badge>
     );
   }
 
@@ -279,9 +276,7 @@ export default function ClubReviewsAndDiscussionPage() {
               )}
               <RoleBadge role={review.role} />
               {review.is_flagged && (
-                <span className="text-[10px] px-2 py-0.5 border rounded bg-red-100 text-red-700 border-red-200">
-                  🚩 flagged
-                </span>
+                <Badge variant="destructive">🚩 flagged</Badge>
               )}
             </div>
             {review.role === "club_admin" && (

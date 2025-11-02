@@ -1,6 +1,7 @@
 "use client";
 
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { Badge } from "@/components/ui/badge";
+import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -36,7 +37,7 @@ type DiscussionRow = {
 };
 
 export default function ClubReviewsAndDiscussionPage() {
-  const supabase = createClientComponentClient();
+  const supabase = getSupabaseBrowserClient();
   const params = useParams();
   const clubId = params?.id as string;
 
@@ -132,16 +133,10 @@ export default function ClubReviewsAndDiscussionPage() {
         : role === "staff"
         ? "Staff"
         : "Parent";
-    const color =
-      role === "club_admin"
-        ? "bg-purple-100 text-purple-700 border-purple-200"
-        : role === "staff"
-        ? "bg-blue-100 text-blue-700 border-blue-200"
-        : "bg-gray-100 text-gray-700 border-gray-200";
     return (
-      <span className={`text-[10px] px-2 py-0.5 border rounded ${color}`}>
+      <Badge className="text-[10px] px-2 py-0.5">
         {label}
-      </span>
+      </Badge>
     );
   }
 
@@ -301,9 +296,7 @@ export default function ClubReviewsAndDiscussionPage() {
               )}
               <RoleBadge role={review.role} />
               {review.is_flagged && (
-                <span className="text-[10px] px-2 py-0.5 border rounded bg-red-100 text-red-700 border-red-200">
-                  🚩 flagged
-                </span>
+                <Badge variant="destructive">🚩 flagged</Badge>
               )}
             </div>
 
@@ -359,9 +352,7 @@ export default function ClubReviewsAndDiscussionPage() {
                   <div className="flex items-center gap-2 flex-wrap text-xs text-gray-600">
                     <RoleBadge role={child.role} />
                     {child.is_flagged && (
-                      <span className="text-[10px] px-2 py-0.5 border rounded bg-red-100 text-red-700 border-red-200">
-                        🚩 flagged
-                      </span>
+                      <Badge variant="destructive">🚩 flagged</Badge>
                     )}
                   </div>
                   <p className="text-gray-800 text-sm mt-2 whitespace-pre-line leading-relaxed">
@@ -414,9 +405,7 @@ export default function ClubReviewsAndDiscussionPage() {
           <div className="flex items-center gap-2 flex-wrap text-sm">
             <RoleBadge role={post.role} />
             {post.is_flagged && (
-              <span className="text-[10px] px-2 py-0.5 border rounded bg-red-100 text-red-700 border-red-200">
-                🚩 flagged
-              </span>
+              <Badge variant="destructive">🚩 flagged</Badge>
             )}
           </div>
 
@@ -467,9 +456,7 @@ export default function ClubReviewsAndDiscussionPage() {
                   <div className="flex items-center gap-2 flex-wrap text-xs text-gray-600">
                     <RoleBadge role={child.role} />
                     {child.is_flagged && (
-                      <span className="text-[10px] px-2 py-0.5 border rounded bg-red-100 text-red-700 border-red-200">
-                        🚩 flagged
-                      </span>
+                      <Badge variant="destructive">🚩 flagged</Badge>
                     )}
                   </div>
                   <p className="text-gray-800 text-sm mt-2 whitespace-pre-line leading-relaxed">

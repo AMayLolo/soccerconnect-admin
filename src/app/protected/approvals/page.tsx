@@ -1,10 +1,10 @@
 "use client";
 
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { useCallback, useEffect, useState } from "react";
 
 export default function ApprovalsPage() {
-  const supabase = createClientComponentClient();
+  const supabase = getSupabaseBrowserClient();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");

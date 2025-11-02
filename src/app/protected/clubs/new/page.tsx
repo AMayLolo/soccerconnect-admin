@@ -1,6 +1,6 @@
 "use client";
 
-import { supabase } from "@/utils/supabase/client";
+import { getSupabaseClient } from "@/utils/supabase/client";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -33,8 +33,9 @@ export default function NewClubPage() {
     e.preventDefault();
     setSaving(true);
 
-    // Step 1: insert club (without logo yet)
-    const { data: inserted, error: insertError } = await supabase
+  const supabase = getSupabaseClient()
+  // Step 1: insert club (without logo yet)
+  const { data: inserted, error: insertError } = await supabase
       .from("clubs")
       .insert([
         {

@@ -1,8 +1,10 @@
 "use client";
 
-import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
-export const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Return the browser client when called from client code. Export a getter
+// function instead of a top-level instance to avoid calling the browser
+// helper during module evaluation in server contexts.
+export function getSupabaseClient() {
+	return getSupabaseBrowserClient()
+}

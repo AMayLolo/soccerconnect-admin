@@ -1,6 +1,6 @@
 "use client";
 
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
@@ -12,7 +12,7 @@ const SUPER_ADMINS = [
 ];
 
 export default function ClubApprovalsPage() {
-  const supabase = createClientComponentClient();
+  const supabase = getSupabaseBrowserClient();
   const router = useRouter();
 
   const [requests, setRequests] = useState<any[]>([]);

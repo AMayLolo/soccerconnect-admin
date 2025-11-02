@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import Link from "next/link";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useState } from "react";
 
 export default function UpdatePasswordPage() {
-  const supabase = createClientComponentClient();
+  const supabase = getSupabaseBrowserClient();
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");

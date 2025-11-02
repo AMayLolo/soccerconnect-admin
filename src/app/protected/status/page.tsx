@@ -1,16 +1,13 @@
 // src/app/protected/status/page.tsx
 "use client";
 
-import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { useCallback, useEffect, useState } from "react";
 
 type Status = "checking" | "ok" | "error";
 
 export default function SystemStatusPage() {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = getSupabaseBrowserClient();
 
   const [supabaseStatus, setSupabaseStatus] = useState<Status>("checking");
   const [authStatus, setAuthStatus] = useState<Status>("checking");

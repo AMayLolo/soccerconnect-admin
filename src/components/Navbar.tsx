@@ -1,65 +1,74 @@
-// Render a server-side <img> for the logo so the asset appears as a separate
-// resource in DevTools (easier debugging) and to avoid client-only hydration
-// surprises while we root-cause the inline-SVG mismatch.
+"use client"
+
 import Logo from "@/components/LogoImg"
-import LogoutButton from "@/components/LogoutButton"
+import { Button } from "@/components/ui/button"
+import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser"
+import { LogOut } from 'lucide-react'
 import Link from "next/link"
+import { usePathname, useRouter } from 'next/navigation'
 
 export function Navbar() {
+  const pathname = usePathname()
+  const router = useRouter()
+  const supabase = getSupabaseBrowserClient()
+
+  const navItems = [
+    { name: "Clubs", href: "/protected/clubs" },
+    { name: "Flagged", href: "/protected/flagged" },
+    { name: "Approvals", href: "/protected/approvals" },
+    { name: "Reviews", href: "/protected/reviews" },
+  ]
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/login")
+  }
+
   return (
-  <nav className="sticky top-4 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-  <div className="mx-auto max-w-7xl px-8 py-3">
-  <div className="flex h-32 justify-between sm:h-40">
-          {/* Logo and Navigation Links */}
+    <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex items-center justify-between">
+          <Link href="/protected">
+            <Logo />
+          </Link>
+
           <div className="flex items-center gap-8">
-            <Link href="/protected" className="flex items-center h-full">
-              {/* Logo */}
-              <Logo className="h-12 sm:h-16 md:h-20 w-auto" />
+            <Link href="/protected" className="hover:opacity-80 transition-opacity">
+              <div>
+                <h1 className="text-base md:text-xl lg:text-2xl font-bold">
+                  Admin Dashboard
+                </h1>
+                <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">
+                  Manage your SoccerConnect platform
+                </p>
+              </div>
             </Link>
 
-            {/* Title moved back to the left area, mid-size between previous and current */}
-            <div className="flex flex-col ml-8 sm:ml-10 navbar-title">
-              <h1 className="text-lg md:text-3xl lg:text-4xl font-extrabold tracking-tight whitespace-nowrap text-foreground">Admin Dashboard</h1>
-              <p className="text-xs text-muted-foreground hidden md:block">Manage your SoccerConnect platform</p>
-            </div>
-
             <div className="hidden md:flex items-center gap-6">
-              <Link
-                href="/protected"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/protected/clubs"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Clubs
-              </Link>
-              <Link
-                href="/protected/flagged"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Flagged
-              </Link>
-              <Link
-                href="/protected/approvals"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Approvals
-              </Link>
-              <Link
-                href="/protected/reviews"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Reviews
-              </Link>
+              {navItems.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`text-sm font-medium transition-colors hover:text-primary ${
+                    pathname === item.href
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
             </div>
-          </div>
 
-          {/* Right side - User info and logout */}
-          <div className="flex items-center gap-2 navbar-right pr-6 sm:pr-8 flex-nowrap">
-            <LogoutButton />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </Button>
           </div>
         </div>
       </div>

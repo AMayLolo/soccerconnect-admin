@@ -2,83 +2,57 @@ import type React from "react"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-import { ArrowRight, BarChart3, CheckCircle, Flag, Star, User, Users, TrendingUp } from "lucide-react"
+import DashboardStatsShell from "@/components/DashboardStatsShell"
+import StatsProvider from "@/components/StatsProvider"
+import { Badge } from "@/components/ui/badge"
+import normalizeStatsKey from "@/utils/normalizeStatsKey"
+import { createServerClient } from "@supabase/ssr"
+import { ArrowRight } from "lucide-react"
+import { cookies } from "next/headers"
 import Link from "next/link"
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => Array.from(cookieStore.getAll()),
+        setAll: () => {},
+      },
+    }
+  )
+
+  // Server-side initial counts
+  const [{ count: clubsCount }, { count: pendingCount }, { count: reportsCount }, { count: reviewsCount }] = await Promise.all([
+    supabase.from("clubs").select("id", { head: true, count: "exact" }),
+    supabase.from("profiles").select("id", { head: true, count: "exact" }).eq("status", "pending_review"),
+    supabase.from("reports").select("id", { head: true, count: "exact" }),
+    supabase.from("reviews").select("id", { head: true, count: "exact" }).eq("is_removed", false),
+  ])
+
+  const totalClubs = clubsCount ?? 0
+  const pendingApprovals = pendingCount ?? 0
+  const flaggedReports = reportsCount ?? 0
+  const activeReviews = reviewsCount ?? 0
+
+  const initialMap: Record<string, number> = {}
+  initialMap[normalizeStatsKey("clubs")] = totalClubs
+  initialMap[normalizeStatsKey("profiles", [{ column: "status", op: "eq", value: "pending_review" }])] = pendingApprovals
+  initialMap[normalizeStatsKey("reports")] = flaggedReports
+  initialMap[normalizeStatsKey("reviews", [{ column: "is_removed", op: "eq", value: false }])] = activeReviews
+
   return (
     <>
-      <div className="border-b border-border bg-gradient-to-b from-muted/50 to-background">
-        <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8">
-          <div className="flex flex-col gap-6">
-            <div>
-          
-              <p className="mt-2 text-muted-foreground">Here's what's happening with your platform today.</p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard label="Total Clubs" value="1,284" change="+12.5%" trend="up" />
-              <StatCard label="Pending Approvals" value="23" change="+4" trend="up" />
-              <StatCard label="Flagged Reports" value="8" change="-2" trend="down" />
-              <StatCard label="Active Reviews" value="456" change="+18.2%" trend="up" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-7xl px-6 py-12 sm:px-8">
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-foreground">Quick Actions</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Access key admin functions and management tools</p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <DashboardCard
-            title="Clubs"
-            description="Manage club profiles, update details, and verify league info."
-            icon={<Users className="h-6 w-6" />}
-            href="/protected/clubs"
-            color="blue"
-          />
-          <DashboardCard
-            title="Flagged Reports"
-            description="Review and resolve reported reviews or content."
-            icon={<Flag className="h-6 w-6" />}
-            href="/protected/flagged"
-            color="red"
-            badge="8"
-          />
-          <DashboardCard
-            title="Approvals"
-            description="Approve or deny club updates and moderation changes."
-            icon={<CheckCircle className="h-6 w-6" />}
-            href="/protected/approvals"
-            color="green"
-            badge="23"
-          />
-          <DashboardCard
-            title="Reviews"
-            description="Moderate user reviews and feedback from across clubs."
-            icon={<Star className="h-6 w-6" />}
-            href="/protected/reviews"
-            color="yellow"
-          />
-          <DashboardCard
-            title="Profile"
-            description="Manage your admin account and update personal details."
-            icon={<User className="h-6 w-6" />}
-            href="/protected/profile"
-            color="purple"
-          />
-          <DashboardCard
-            title="Status"
-            description="View recent updates, flagged reports, and system status."
-            icon={<BarChart3 className="h-6 w-6" />}
-            href="/protected/status"
-            color="cyan"
-          />
-        </div>
-      </div>
+      <StatsProvider initial={initialMap}>
+        <DashboardStatsShell
+          totalClubs={totalClubs}
+          pendingApprovals={pendingApprovals}
+          flaggedReports={flaggedReports}
+          activeReviews={activeReviews}
+        />
+      </StatsProvider>
 
       <footer className="border-t border-border bg-muted/30">
         <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8">
@@ -102,40 +76,7 @@ export default function DashboardPage() {
   )
 }
 
-function StatCard({
-  label,
-  value,
-  change,
-  trend,
-}: {
-  label: string
-  value: string
-  change: string
-  trend: "up" | "down"
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-muted-foreground">{label}</p>
-        <TrendingUp
-          className={`h-4 w-4 ${
-            trend === "up" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400 rotate-180"
-          }`}
-        />
-      </div>
-      <div className="mt-3 flex items-baseline gap-2">
-        <p className="text-2xl font-bold text-foreground">{value}</p>
-        <span
-          className={`text-sm font-medium ${
-            trend === "up" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-          }`}
-        >
-          {change}
-        </span>
-      </div>
-    </div>
-  )
-}
+// StatCard removed — replaced by LiveStatCard (client) for live updates.
 
 function DashboardCard({
   title,
@@ -187,11 +128,9 @@ function DashboardCard({
           </div>
           <div className="flex items-center gap-2">
             {badge && (
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${badgeColorClasses[color]}`}
-              >
+              <Badge className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${badgeColorClasses[color]}`}>
                 {badge}
-              </span>
+              </Badge>
             )}
             <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-1" />
           </div>

@@ -122,3 +122,29 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* sensible wrapping utilities used across the app */
+@layer components {
+  /* allow long unbroken text to wrap inside flexible containers */
+  .text-wrap {
+    /* allow wrapping at word boundaries first; avoid aggressive mid-word breaks */
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+
+  /* small helpers for multi-line clamping when desired */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

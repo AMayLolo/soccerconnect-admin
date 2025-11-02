@@ -1,143 +1,49 @@
-"use client";
+export const dynamic = "force-dynamic"
+export const revalidate = 0
 
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import StatsProvider from "@/components/StatsProvider"
+import { getSupabaseServerReadOnly } from "@/lib/supabaseServerReadOnly"
+import normalizeStatsKey from "@/utils/normalizeStatsKey"
+import ClubsClient from "./ClubsClient"
 
-export default function ClubsPage() {
-  const [clubs, setClubs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const supabase = createClientComponentClient();
+export default async function ClubsPage() {
+  const supabase = getSupabaseServerReadOnly()
 
-  useEffect(() => {
-    async function fetchClubs() {
-      try {
-        const { data, error } = await supabase
-          .from("clubs")
-          .select("id, club_name, city, state, logo_url");
+  // Fetch initial clubs and counts server-side so initial HTML is populated and
+  // protected from client auth/RLS issues.
+  const [{ data: clubsData }, { data: countsRows }] = await Promise.all([
+    supabase
+      .from('clubs')
+      .select('id, club_name, city, state, logo_url, description, founded')
+      .order('club_name', { ascending: true }),
+    // counts fetch: include club_name so we can fall back to this list if the
+    // primary clubs query returns no rows (defensive). Avoid selecting
+    // optional `description` here because some schemas don't have it.
+    supabase
+      .from('clubs')
+      .select('id, club_name, logo_url, founded, city, state')
+  ])
 
-        if (error) {
-          console.error("🛑 Supabase SELECT error:", error);
-          setClubs([]);
-        } else {
-          console.log("✅ Clubs data fetched:", data);
-          setClubs(data || []);
-        }
-      } catch (err) {
-        console.error("💥 Unexpected fetch error:", err);
-        setClubs([]);
-      } finally {
-        setLoading(false);
-      }
-    }
+  // Defensive: if the first query returned no data (sometimes observed),
+  // fall back to the second query's rows which include club_name now.
+  const clubs = (clubsData as any) && (clubsData as any).length > 0 ? (clubsData as any) : (countsRows as any) || []
 
-    fetchClubs();
-  }, [supabase]);
+  // Compute counts server-side similar to the API route so StatsProvider has initial values
+  const rows = (countsRows as any) || []
+  const total = rows.length
+  const incomplete = rows.reduce((acc: number, r: any) => {
+    const missing = !r.logo_url || r.logo_url === '' || !r.description || r.description === '' || !r.founded || r.founded === '' || !r.city || r.city === '' || !r.state || r.state === ''
+    return acc + (missing ? 1 : 0)
+  }, 0)
+  const complete = Math.max(0, total - incomplete)
 
-  if (loading) {
-    return (
-      <div className="text-gray-500 text-sm py-8 text-center">
-        Loading clubs...
-      </div>
-    );
-  }
+  const initialMap: Record<string, number> = {}
+  initialMap[normalizeStatsKey('clubs')] = total
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-          Clubs Directory
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-          Manage, review, and update all registered soccer clubs.
-        </p>
-      </div>
-
-      {/* Filter + Add button */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <select className="border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 text-sm bg-white dark:bg-gray-800">
-          <option>All Cities</option>
-          {/* Future dynamic options */}
-        </select>
-
-        <Link
-          href="/protected/clubs/new"
-          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-4 py-2 rounded-lg transition"
-        >
-          <span className="text-lg leading-none">+</span>
-          New Club
-        </Link>
-      </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-        <table className="min-w-full text-sm text-left">
-          <thead className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 uppercase text-xs">
-            <tr>
-              <th className="px-4 py-3 font-medium">Logo</th>
-              <th className="px-4 py-3 font-medium">Club Name</th>
-              <th className="px-4 py-3 font-medium">City</th>
-              <th className="px-4 py-3 font-medium">State</th>
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {clubs.length > 0 ? (
-              clubs.map((club) => (
-                <tr
-                  key={club.id}
-                  onClick={() =>
-                    (window.location.href = `/protected/clubs/${club.id}`)
-                  }
-                  className="hover:bg-gray-50 dark:hover:bg-gray-750 cursor-pointer transition"
-                >
-                  {/* Logo */}
-                  <td className="px-4 py-3">
-                    {club.logo_url ? (
-                      <Image
-                        src={club.logo_url}
-                        alt={club.club_name}
-                        width={32}
-                        height={32}
-                        className="rounded-full object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <span className="text-gray-400 text-xs">N/A</span>
-                    )}
-                  </td>
-
-                  {/* Club Name */}
-                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
-                    {club.club_name || "N/A"}
-                  </td>
-
-                  {/* City */}
-                  <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
-                    {club.city || "—"}
-                  </td>
-
-                  {/* State */}
-                  <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
-                    {club.state || "—"}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="px-4 py-8 text-center text-gray-500 dark:text-gray-400"
-                >
-                  No clubs found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+    <StatsProvider initial={initialMap}>
+      {/* ClubsClient is a client component that receives the server-fetched clubs */}
+      <ClubsClient initialClubs={clubs} />
+    </StatsProvider>
+  )
 }

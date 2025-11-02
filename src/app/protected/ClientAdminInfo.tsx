@@ -1,6 +1,6 @@
 'use client';
 
-import { createBrowserClient } from '@supabase/ssr';
+import { getSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import { useEffect, useState } from 'react';
 
 type AdminRow = { id: string; role: string };
@@ -11,10 +11,7 @@ export default function ClientAdminInfo() {
   const [err, setErr] = useState<string | null>(null);
 
   // Browser client (no cookies API needed)
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = getSupabaseBrowserClient();
 
   useEffect(() => {
     let cancelled = false;

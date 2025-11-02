@@ -1,7 +1,7 @@
 "use client";
 
+import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { useEffect } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 /**
  * Keeps Supabase session in sync with server cookies,
@@ -10,7 +10,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
  */
 export function SupabaseSessionListener() {
   useEffect(() => {
-    const supabase = createClientComponentClient();
+  const supabase = getSupabaseBrowserClient();
 
     const {
       data: { subscription },

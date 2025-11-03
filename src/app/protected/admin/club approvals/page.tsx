@@ -1,15 +1,10 @@
 "use client";
 
+import { isSuperAdminEmail } from "@/constants/admins";
 import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
-
-const SUPER_ADMINS = [
-  "abby.lossa@marsh.com",
-  "admin@soccerconnectusa.com",
-  // Add other authorized emails here
-];
 
 export default function ClubApprovalsPage() {
   const supabase = getSupabaseBrowserClient();
@@ -38,7 +33,7 @@ export default function ClubApprovalsPage() {
 
     setCurrentUser(user.email || "Unknown");
 
-    const allowed = user.email && SUPER_ADMINS.includes(user.email);
+  const allowed = isSuperAdminEmail(user.email);
     if (!allowed) {
       toast.error("Access Denied: Admins Only");
       setAuthorized(false);

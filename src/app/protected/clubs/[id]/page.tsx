@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatRow } from '@/components/ui/stat'
+import { isSuperAdminEmail } from '@/constants/admins'
+import { getCurrentUser } from '@/utils/auth'
+import { ClubActionMenu } from './ClubActionMenu'
 
 export const revalidate = 0
 
@@ -30,6 +33,9 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
   const { data: clubRow, error: clubErr } = await supabase.from('clubs').select('*').eq('id', id).maybeSingle()
   if (clubErr) console.error('Failed to load club:', clubErr)
   if (!clubRow) return notFound()
+
+  const currentUser = await getCurrentUser()
+  const canDelete = isSuperAdminEmail(currentUser?.email)
 
   const club = {
     id: clubRow.id,
@@ -96,7 +102,7 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
       </div>
 
       {/* Club Header */}
-      <div className="border-b border-border bg-gradient-to-b from-muted/50 to-background">
+  <div className="border-b border-border bg-linear-to-b from-muted/50 to-background">
         <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
             <div className="flex gap-6">
@@ -110,7 +116,7 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
 
               <div className="flex flex-col gap-3 min-w-0">
                 <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-bold tracking-tight text-foreground break-words text-wrap">{club.name}</h1>
+                  <h1 className="text-3xl font-bold tracking-tight text-foreground wrap-break-word text-wrap">{club.name}</h1>
                   {club.status === 'verified' && (
                     <Badge className="gap-1">
                       <Shield className="h-3 w-3" />
@@ -153,9 +159,7 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
               <Link href={`/protected/clubs/${club.id}/update`}>
                 <Button variant="outline" size="sm">Edit Details</Button>
               </Link>
-              <Button variant="outline" size="sm">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
+              <ClubActionMenu clubId={club.id} canDelete={canDelete} />
             </div>
           </div>
         </div>

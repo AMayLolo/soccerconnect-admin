@@ -30,7 +30,7 @@ export async function GET() {
     try {
       const { data: rows, error } = await supabase
         .from('clubs')
-        .select('id, logo_url, founded, city, state')
+        .select('id, logo_url, founded, city, state, about')
 
       if (error) {
         console.error('Projection query failed for counts', error)
@@ -41,7 +41,8 @@ export async function GET() {
 
       const list = rows || []
       const incomplete = list.reduce((acc: number, r: any) => {
-        const missing = !r.logo_url || r.logo_url === '' || !r.founded || r.founded === '' || !r.city || r.city === '' || !r.state || r.state === ''
+        const bio = r?.about
+        const missing = !r.logo_url || r.logo_url === '' || !bio || bio === '' || !r.founded || r.founded === '' || !r.city || r.city === '' || !r.state || r.state === ''
         return acc + (missing ? 1 : 0)
       }, 0)
       const complete = Math.max(0, total - incomplete)

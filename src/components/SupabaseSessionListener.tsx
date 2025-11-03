@@ -1,6 +1,7 @@
 "use client";
 
 import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { useEffect } from "react";
 
 /**
@@ -10,11 +11,11 @@ import { useEffect } from "react";
  */
 export function SupabaseSessionListener() {
   useEffect(() => {
-  const supabase = getSupabaseBrowserClient();
+    const supabase = getSupabaseBrowserClient();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       // Only send on meaningful events, to avoid spamming
       if (
         event === "SIGNED_IN" ||

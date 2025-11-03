@@ -7,16 +7,36 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 // accidental server-side calls produce a clear runtime error only when used.
 export function getSupabaseBrowserClient() {
   if (typeof window === "undefined") {
-    // Return a proxy that throws on first property access to provide a
-    // clearer error when someone mistakenly calls this during SSR.
-    const handler: ProxyHandler<any> = {
-      get() {
-        throw new Error("getSupabaseBrowserClient was called during server render — call it from a client component or inside useEffect on the client.")
-      },
+    // During server render return a safe proxy instead of throwing here.
+    // The proxy will only throw if a method is actually invoked at runtime
+    // on the server. This prevents build/runtime failures when modules
+    // import this helper but only call it from client code.
+    const thrower = () => {
+      throw new Error(
+        'getSupabaseBrowserClient was used during server render. Call this helper only from client components or inside client-side effects.'
+      )
+    }
+
+    const methodHandler: ProxyHandler<any> = {
       apply() {
-        throw new Error("getSupabaseBrowserClient was called during server render — call it from a client component or inside useEffect on the client.")
+        thrower()
+      },
+      get() {
+        return thrower
       },
     }
+
+    const handler: ProxyHandler<any> = {
+      get() {
+        // Return a callable proxy so nested accesses (e.g. supabase.auth.signOut)
+        // don't throw on property access but will throw when invoked.
+        return new Proxy(thrower, methodHandler)
+      },
+      apply() {
+        thrower()
+      },
+    }
+
     return new Proxy({}, handler) as any
   }
 

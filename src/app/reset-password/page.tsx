@@ -1,6 +1,7 @@
 "use client";
 
 import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import type { AuthError, User } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 
 export default function ResetPasswordPage() {
@@ -13,11 +14,13 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     // Confirm the session is present (Supabase will include it in the URL token)
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (!data.session) {
-        setError("Password reset link is invalid or expired.");
-      }
-    });
+    supabase.auth
+      .getUser()
+      .then(({ data, error }: { data: { user: User | null }; error: AuthError | null }) => {
+        if (error || !data?.user) {
+          setError("Password reset link is invalid or expired.");
+        }
+      });
   }, [supabase]);
 
   const handleReset = async (e: React.FormEvent) => {

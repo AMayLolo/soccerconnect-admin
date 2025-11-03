@@ -1,14 +1,17 @@
 "use client"
 
+import { ALLOWED_LOGO_MIME_TYPES, LOGO_BUCKET } from "@/constants/storage"
 import { getSupabaseClient } from "@/utils/supabase/client"
 import Image from "next/image"
 import { useParams, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 export default function ClubEditPage() {
   const router = useRouter()
   const params = useParams()
   const clubId = params?.id as string
+
+  const supabaseClient = useMemo(() => getSupabaseClient(), [])
 
   const [club, setClub] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -21,22 +24,26 @@ export default function ClubEditPage() {
     let mounted = true
     async function load() {
         setLoading(true)
-        const supabase = getSupabaseClient()
-        const { data, error } = await supabase.from("clubs").select("*").eq("id", clubId).single()
+  const { data, error } = await supabaseClient.from("clubs").select("*").eq("id", clubId).single()
       if (error) {
         console.error("Failed to load club:", error)
       } else if (mounted) {
-        setClub(data)
+  setClub({ ...data, founded: data?.founded ?? "" })
         setPreview(data?.logo_url ?? null)
       }
       setLoading(false)
     }
     load()
     return () => { mounted = false }
-  }, [clubId])
+  }, [clubId, supabaseClient])
 
   function handleFileChange(file: File | null) {
     if (!file) return
+  if (!ALLOWED_LOGO_MIME_TYPES.includes(file.type as (typeof ALLOWED_LOGO_MIME_TYPES)[number])) {
+      alert("Logo upload failed: Only PNG or JPG images are allowed.")
+      return
+    }
+
     setLogoFile(file)
     setPreview(URL.createObjectURL(file))
   }
@@ -49,22 +56,25 @@ export default function ClubEditPage() {
     // If a new logo was selected, upload it first
     let logo_url = club.logo_url || null
     if (logoFile) {
-      const fileExt = logoFile.name.split(".").pop()
-      const filePath = `club-logos/${clubId}-${Date.now()}.${fileExt}`
+    const fileExt = logoFile.name.split(".").pop()
+    const filePath = `club-logos/${clubId}/${Date.now()}.${fileExt}`
 
-      const { error: uploadError } = await supabase.storage.from("logos").upload(filePath, logoFile, { upsert: true })
+  const { error: uploadError } = await supabaseClient.storage.from(LOGO_BUCKET).upload(filePath, logoFile, {
+        upsert: true,
+        contentType: logoFile.type,
+      })
       if (uploadError) {
         alert("Logo upload failed: " + uploadError.message)
         setSaving(false)
         return
       }
 
-      const { data: pub } = supabase.storage.from("logos").getPublicUrl(filePath)
+  const { data: pub } = supabaseClient.storage.from(LOGO_BUCKET).getPublicUrl(filePath)
       logo_url = pub?.publicUrl ?? logo_url
     }
 
     // Update the club record
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from("clubs")
       .update({
         club_name: club.club_name,
@@ -75,6 +85,7 @@ export default function ClubEditPage() {
         ages: club.ages,
         competition_level: club.competition_level,
         about: club.about,
+        founded: club.founded || null,
         logo_url,
       })
       .eq("id", clubId)
@@ -105,6 +116,17 @@ export default function ClubEditPage() {
             onChange={(e) => setClub({ ...club, club_name: e.target.value })}
             className="w-full border rounded-md px-3 py-2"
             required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Founded</label>
+          <input
+            type="text"
+            placeholder="e.g. 1998"
+            value={club.founded ?? ""}
+            onChange={(e) => setClub({ ...club, founded: e.target.value })}
+            className="w-full border rounded-md px-3 py-2"
           />
         </div>
 

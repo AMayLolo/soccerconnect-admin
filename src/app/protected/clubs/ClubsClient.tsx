@@ -16,7 +16,7 @@ type Club = {
   city: string
   state: string
   logo_url?: string
-  description?: string
+  about?: string
   founded?: string
 }
 
@@ -60,7 +60,8 @@ export default function ClubsClient({ initialClubs }: { initialClubs: Club[] }) 
   const { count: total = 0 } = useSharedStats("clubs")
 
   const isIncomplete = (club: Club) => {
-    return !club.logo_url || !club.description || !club.founded || !club.city || !club.state
+    const bio = club.about
+    return !club.logo_url || !bio || !club.founded || !club.city || !club.state
   }
 
   // derive complete/incomplete counts from the client list (falls back to

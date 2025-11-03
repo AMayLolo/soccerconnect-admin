@@ -1,11 +1,19 @@
 // src/app/api/auth/login/route.ts
-import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   const { email, password } = await req.json();
   const cookieStore = await cookies();
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.error("Missing Supabase env vars", {
+      url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasAnon: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+    });
+    return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

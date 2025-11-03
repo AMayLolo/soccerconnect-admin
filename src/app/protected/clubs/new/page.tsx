@@ -1,5 +1,6 @@
 "use client";
 
+import { ALLOWED_LOGO_MIME_TYPES, LOGO_BUCKET } from "@/constants/storage";
 import { getSupabaseClient } from "@/utils/supabase/client";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -17,6 +18,7 @@ export default function NewClubPage() {
     ages: "",
     competition_level: "",
     about: "",
+    founded: "",
   });
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -25,6 +27,11 @@ export default function NewClubPage() {
 
   function handleFileChange(file: File | null) {
     if (!file) return;
+    if (!ALLOWED_LOGO_MIME_TYPES.includes(file.type as (typeof ALLOWED_LOGO_MIME_TYPES)[number])) {
+      alert("Logo upload failed: Only PNG or JPG images are allowed.");
+      return;
+    }
+
     setLogoFile(file);
     setPreview(URL.createObjectURL(file));
   }
@@ -47,6 +54,7 @@ export default function NewClubPage() {
           ages: club.ages,
           competition_level: club.competition_level,
           about: club.about,
+          founded: club.founded || null,
         },
       ])
       .select()
@@ -63,11 +71,14 @@ export default function NewClubPage() {
     // Step 2: if a logo was selected, upload and attach URL
     if (logoFile) {
       const fileExt = logoFile.name.split(".").pop();
-      const filePath = `club-logos/${inserted.id}-${Date.now()}.${fileExt}`;
+      const filePath = `club-logos/${inserted.id}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
-        .from("logos")
-        .upload(filePath, logoFile, { upsert: true });
+        .from(LOGO_BUCKET)
+        .upload(filePath, logoFile, {
+          upsert: true,
+          contentType: logoFile.type,
+        });
 
       if (uploadError) {
         alert("Logo upload failed: " + uploadError.message);
@@ -77,7 +88,7 @@ export default function NewClubPage() {
 
       const {
         data: { publicUrl },
-      } = supabase.storage.from("logos").getPublicUrl(filePath);
+      } = supabase.storage.from(LOGO_BUCKET).getPublicUrl(filePath);
       logo_url = publicUrl;
 
       // Step 3: update logo_url on the club record
@@ -140,6 +151,17 @@ export default function NewClubPage() {
             onChange={(e) =>
               setClub({ ...club, website_url: e.target.value })
             }
+            className="w-full border rounded-md px-3 py-2"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Founded</label>
+          <input
+            type="text"
+            placeholder="e.g. 1998"
+            value={club.founded}
+            onChange={(e) => setClub({ ...club, founded: e.target.value })}
             className="w-full border rounded-md px-3 py-2"
           />
         </div>

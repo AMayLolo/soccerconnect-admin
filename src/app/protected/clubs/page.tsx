@@ -14,14 +14,14 @@ export default async function ClubsPage() {
   const [{ data: clubsData }, { data: countsRows }] = await Promise.all([
     supabase
       .from('clubs')
-      .select('id, club_name, city, state, logo_url, about, founded')
+      .select('id, club_name, city, state, logo_url, about, founded, competition_level')
       .order('club_name', { ascending: true }),
     // counts fetch: include club_name so we can fall back to this list if the
     // primary clubs query returns no rows (defensive). Avoid selecting
     // optional `description` here because some schemas don't have it.
     supabase
       .from('clubs')
-      .select('id, club_name, logo_url, founded, city, state, about')
+  .select('id, club_name, logo_url, founded, city, state, about, competition_level')
   ])
 
   // Defensive: if the first query returned no data (sometimes observed),

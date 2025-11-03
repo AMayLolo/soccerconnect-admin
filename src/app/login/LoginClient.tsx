@@ -1,11 +1,16 @@
 // src/app/login/LoginClient.tsx
 "use client";
 
+import LogoImg from "@/components/LogoImg";
+import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import * as React from "react";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { loginAction } from "./actions";
 
 export default function LoginClient() {
+  const router = useRouter();
   // form fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,18 +21,60 @@ export default function LoginClient() {
   // server action pending state
   const [isPending, startTransition] = useTransition();
 
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+
+    const handlePasswordRecovery = async () => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const hashParams = new URLSearchParams(
+        window.location.hash.startsWith("#") ? window.location.hash.slice(1) : ""
+      );
+      const searchParams = new URLSearchParams(window.location.search);
+      const recoveryType = hashParams.get("type") ?? searchParams.get("type");
+
+      if (recoveryType !== "recovery") {
+        return;
+      }
+
+      try {
+        if (searchParams.has("code")) {
+          const code = searchParams.get("code");
+          if (code) {
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            if (error) throw error;
+          }
+        } else if (window.location.hash.length > 1) {
+          const { error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
+          if (error) throw error;
+        }
+
+        router.replace("/update-password");
+      } catch (err) {
+        console.error("[LoginClient] Failed to process password recovery tokens", err);
+        setErrorMsg("Password reset link is invalid or expired.");
+      }
+    };
+
+    handlePasswordRecovery();
+  }, [router]);
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorMsg(null);
 
     // read ?redirectTo=... from current URL
     const params = new URLSearchParams(window.location.search);
-    const redirectTo = params.get("redirectTo") ?? "/protected";
+    const redirectTo = params.get("redirectTo");
 
     const formData = new FormData();
     formData.set("email", email);
     formData.set("password", password);
-    formData.set("redirectTo", redirectTo);
+    if (redirectTo) {
+      formData.set("redirectTo", redirectTo);
+    }
 
     startTransition(async () => {
       try {
@@ -47,15 +94,14 @@ export default function LoginClient() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-950 text-neutral-100 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900 p-6 shadow-xl">
-        <h1 className="text-xl font-semibold text-white">Sign in</h1>
-        <p className="mt-1 text-sm text-neutral-400">
-          Enter your admin credentials.
-        </p>
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 text-neutral-900 px-4">
+      <div className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-8 shadow-2xl">
+        <div className="flex justify-center">
+          <LogoImg className="h-16" />
+        </div>
 
         {errorMsg && (
-          <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+          <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
             {errorMsg}
           </div>
         )}
@@ -64,7 +110,7 @@ export default function LoginClient() {
           <div className="space-y-2">
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-neutral-200"
+              className="block text-sm font-medium text-neutral-700"
             >
               Email
             </label>
@@ -73,7 +119,7 @@ export default function LoginClient() {
               type="email"
               autoComplete="email"
               required
-              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-neutral-100 placeholder-neutral-500 outline-none ring-0 focus:border-blue-500"
+              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 placeholder-neutral-400 outline-none ring-0 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isPending}
@@ -83,7 +129,7 @@ export default function LoginClient() {
           <div className="space-y-2">
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-neutral-200"
+              className="block text-sm font-medium text-neutral-700"
             >
               Password
             </label>
@@ -92,7 +138,7 @@ export default function LoginClient() {
               type="password"
               autoComplete="current-password"
               required
-              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-neutral-100 placeholder-neutral-500 outline-none ring-0 focus:border-blue-500"
+              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 placeholder-neutral-400 outline-none ring-0 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isPending}
@@ -108,9 +154,14 @@ export default function LoginClient() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-[11px] text-neutral-600">
-          soccerconnect admin
-        </p>
+        <div className="mt-6 flex flex-col items-center gap-2 text-sm text-neutral-600">
+          <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-500">
+            Sign Up
+          </Link>
+          <Link href="/reset-password" className="font-medium text-blue-600 hover:text-blue-500">
+            Reset Password
+          </Link>
+        </div>
       </div>
     </div>
   );

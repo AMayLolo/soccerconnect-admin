@@ -1,70 +1,67 @@
 "use client";
 
 import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
-import type { AuthError, User } from "@supabase/supabase-js";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 
 export default function ResetPasswordPage() {
   const supabase = getSupabaseBrowserClient();
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // Confirm the session is present (Supabase will include it in the URL token)
-    supabase.auth
-      .getUser()
-      .then(({ data, error }: { data: { user: User | null }; error: AuthError | null }) => {
-        if (error || !data?.user) {
-          setError("Password reset link is invalid or expired.");
-        }
-      });
-  }, [supabase]);
+  const redirectTo = useMemo(() => {
+    const envUrl =
+      process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.NEXT_PUBLIC_SITE_URL?.trim();
 
-  const handleReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setMessage(null);
-
-    if (!password || !confirm) {
-      setError("Please fill out both fields.");
-      return;
+    if (envUrl) {
+      return `${envUrl.replace(/\/$/, "")}/update-password`;
     }
 
-    if (password !== confirm) {
-      setError("Passwords do not match.");
+    if (typeof window !== "undefined") {
+      return `${window.location.origin}/update-password`;
+    }
+
+    return undefined;
+  }, []);
+
+  const handleResetRequest = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setMessage(null);
+    setError(null);
+
+    if (!email.trim()) {
+      setError("Please enter the email associated with your account.");
       return;
     }
 
     setLoading(true);
 
-    const { error } = await supabase.auth.updateUser({ password });
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo,
+    });
 
     setLoading(false);
 
     if (error) {
-      setError(error.message);
-    } else {
-      setMessage("Password successfully updated! Redirecting to login...");
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 2500);
+      setError(error.message ?? "Unable to send reset instructions right now.");
+      return;
     }
+
+    setMessage("Check your inbox for a password reset link.");
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <form
-        onSubmit={handleReset}
+        onSubmit={handleResetRequest}
         className="bg-white p-8 rounded-xl shadow-md w-96 space-y-4"
       >
         <h1 className="text-2xl font-bold text-center text-gray-900">
           Reset Password
         </h1>
         <p className="text-center text-gray-500 text-sm mb-2">
-          Enter your new password below
+          Enter your email and we'll send password reset instructions.
         </p>
 
         {error && (
@@ -80,20 +77,11 @@ export default function ResetPasswordPage() {
         )}
 
         <input
-          type="password"
-          placeholder="New password"
+          type="email"
+          placeholder="you@example.com"
           className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-
-        <input
-          type="password"
-          placeholder="Confirm password"
-          className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           required
         />
 
@@ -102,7 +90,7 @@ export default function ResetPasswordPage() {
           disabled={loading}
           className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition disabled:opacity-50"
         >
-          {loading ? "Updating..." : "Update Password"}
+          {loading ? "Sending..." : "Send Reset Link"}
         </button>
       </form>
     </div>

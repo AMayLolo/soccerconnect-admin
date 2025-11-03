@@ -1,13 +1,15 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+
+import { resolvePostLoginRedirect } from "@/utils/auth";
 
 export async function loginAction(formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
-  const redirectTo = formData.get("redirectTo") as string;
+  const redirectTo = formData.get("redirectTo");
 
   const cookieStore = await cookies();
 
@@ -44,6 +46,10 @@ export async function loginAction(formData: FormData) {
   await new Promise((resolve) => setTimeout(resolve, 250));
 
   console.log("✅ Logged in:", data.user?.email);
+  const destination =
+    typeof redirectTo === "string" && redirectTo.startsWith("/")
+      ? redirectTo
+      : await resolvePostLoginRedirect(supabase, data.user?.id);
 
-  redirect(redirectTo || "/protected");
+  redirect(destination);
 }

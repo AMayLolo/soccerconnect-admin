@@ -1,10 +1,28 @@
 "use client"
 
+import { LEAGUE_PRESETS } from "@/constants/leagues"
 import { ALLOWED_LOGO_MIME_TYPES, LOGO_BUCKET } from "@/constants/storage"
+import parseLeagues from "@/utils/parseLeagues"
 import { getSupabaseClient } from "@/utils/supabase/client"
 import Image from "next/image"
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
+
+const mergeLeagueList = (current: string[], additions: string[]): string[] => {
+  if (!additions || additions.length === 0) return current
+  const existing = new Set(current.map((item) => item.toLowerCase()))
+  const merged = [...current]
+  additions.forEach((entry) => {
+    const normalized = entry.trim()
+    if (!normalized) return
+    const key = normalized.toLowerCase()
+    if (!existing.has(key)) {
+      merged.push(normalized)
+      existing.add(key)
+    }
+  })
+  return merged
+}
 
 export default function ClubEditPage() {
   const router = useRouter()
@@ -19,6 +37,8 @@ export default function ClubEditPage() {
 
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
+  const [leagues, setLeagues] = useState<string[]>([])
+  const [leagueInput, setLeagueInput] = useState("")
 
   useEffect(() => {
     let mounted = true
@@ -30,6 +50,7 @@ export default function ClubEditPage() {
       } else if (mounted) {
   setClub({ ...data, founded: data?.founded ?? "" })
         setPreview(data?.logo_url ?? null)
+        setLeagues(parseLeagues(data?.competition_level ?? data?.league ?? ""))
       }
       setLoading(false)
     }
@@ -40,7 +61,7 @@ export default function ClubEditPage() {
   function handleFileChange(file: File | null) {
     if (!file) return
   if (!ALLOWED_LOGO_MIME_TYPES.includes(file.type as (typeof ALLOWED_LOGO_MIME_TYPES)[number])) {
-      alert("Logo upload failed: Only PNG or JPG images are allowed.")
+    alert("Logo upload failed: Only PNG, JPG, or SVG images are allowed.")
       return
     }
 
@@ -74,6 +95,16 @@ export default function ClubEditPage() {
     }
 
     // Update the club record
+    const pending = parseLeagues(leagueInput)
+    const normalizedLeagues = mergeLeagueList(leagues, pending)
+
+    if (pending.length > 0) {
+      setLeagues(normalizedLeagues)
+      setLeagueInput("")
+    }
+
+    const competitionLevels = normalizedLeagues.join(", ")
+
     const { error } = await supabaseClient
       .from("clubs")
       .update({
@@ -83,7 +114,7 @@ export default function ClubEditPage() {
         website_url: club.website_url,
         tryout_info_url: club.tryout_info_url,
         ages: club.ages,
-        competition_level: club.competition_level,
+        competition_level: competitionLevels,
         about: club.about,
         founded: club.founded || null,
         logo_url,
@@ -173,13 +204,74 @@ export default function ClubEditPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Competition Level</label>
-            <input
-              type="text"
-              value={club.competition_level ?? ""}
-              onChange={(e) => setClub({ ...club, competition_level: e.target.value })}
-              className="w-full border rounded-md px-3 py-2"
-            />
+            <label className="block text-sm font-medium mb-1">Leagues</label>
+            <div className="rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700">
+              {leagues.length > 0 ? (
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {leagues.map((league) => (
+                    <span
+                      key={league}
+                      className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-500/20 dark:text-blue-200"
+                    >
+                      {league}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setLeagues((prev) => prev.filter((item) => item.toLowerCase() !== league.toLowerCase()))
+                        }
+                        className="text-blue-600 hover:text-blue-800 dark:text-blue-200 dark:hover:text-white"
+                        aria-label={`Remove ${league}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mb-2 text-xs text-muted-foreground">No leagues added yet.</p>
+              )}
+              <input
+                type="text"
+                value={leagueInput}
+                onChange={(e) => setLeagueInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === ",") {
+                    e.preventDefault()
+                    const entries = parseLeagues(leagueInput)
+                    if (entries.length > 0) {
+                      setLeagues((prev) => mergeLeagueList(prev, entries))
+                      setLeagueInput("")
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  const entries = parseLeagues(leagueInput)
+                  if (entries.length > 0) {
+                    setLeagues((prev) => mergeLeagueList(prev, entries))
+                    setLeagueInput("")
+                  }
+                }}
+                placeholder="Type a league and press Enter"
+                className="w-full border-0 bg-transparent px-0 py-1 text-sm outline-none"
+              />
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Press Enter or use commas to add multiple leagues. These display as filterable tags on the club profile.
+              </p>
+              {LEAGUE_PRESETS.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {LEAGUE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => setLeagues((prev) => mergeLeagueList(prev, [preset.name]))}
+                      className="rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Ages</label>

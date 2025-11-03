@@ -3,6 +3,8 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { resolvePostLoginRedirect } from "@/utils/auth";
+
 export async function POST(req: Request) {
   const { email, password } = await req.json();
   const cookieStore = await cookies();
@@ -47,9 +49,10 @@ export async function POST(req: Request) {
   }
 
   const { access_token, refresh_token, expires_in } = data.session;
+  const redirectTo = await resolvePostLoginRedirect(supabase, data.user?.id);
 
   // ✅ ensure both cookies are written
-  const res = NextResponse.json({ user: data.user });
+  const res = NextResponse.json({ user: data.user, redirectTo });
   res.cookies.set("sb-access-token", access_token, {
     httpOnly: true,
     sameSite: "lax",

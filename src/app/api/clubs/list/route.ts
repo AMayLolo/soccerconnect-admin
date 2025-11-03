@@ -7,7 +7,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('clubs')
       // `description` column was removed from the DB schema; avoid projecting it
-      .select('id, club_name, city, state, logo_url, founded')
+      .select('id, club_name, city, state, logo_url, founded, competition_level')
       .order('club_name', { ascending: true })
 
     if (error) {
@@ -19,7 +19,7 @@ export async function GET() {
       try {
         const { data: fallback, error: fallbackErr } = await supabase
           .from('clubs')
-          .select('id, club_name, city, state, logo_url')
+          .select('id, club_name, city, state, logo_url, competition_level')
 
         if (!fallbackErr) {
           const resOk = NextResponse.json(fallback || [])

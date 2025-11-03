@@ -1,16 +1,22 @@
 import { createServerClient } from '@supabase/ssr'
-import { ArrowLeft, Calendar, Flag, MapPin, MessageSquare, MoreVertical, Shield, Star, ThumbsUp, Users } from 'lucide-react'
+import { Flag, MessageSquare, MoreVertical, ThumbsUp, Users } from 'lucide-react'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import ClubProfileView, {
+    type ClaimInfo,
+    type ClubDiscussion,
+    type ClubProfile,
+    type ClubReview,
+} from '@/components/clubs/ClubProfileView'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { StatRow } from '@/components/ui/stat'
 import { isSuperAdminEmail } from '@/constants/admins'
+import { getSupabaseServerAdmin } from '@/lib/supabaseServerAdmin'
 import { getCurrentUser } from '@/utils/auth'
+import parseLeagues from '@/utils/parseLeagues'
 import { ClubActionMenu } from './ClubActionMenu'
 
 export const revalidate = 0
@@ -37,20 +43,111 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
   const currentUser = await getCurrentUser()
   const canDelete = isSuperAdminEmail(currentUser?.email)
 
-  const club = {
-    id: clubRow.id,
-    name: clubRow.club_name ?? clubRow.name,
-    logo: clubRow.logo_url ?? clubRow.logo,
-    league: clubRow.competition_level ?? clubRow.league,
-    location: [clubRow.city, clubRow.state].filter(Boolean).join(', ') || clubRow.location,
-    founded: clubRow.founded ?? '',
-    members: clubRow.members_count ?? clubRow.members ?? '—',
-    rating: clubRow.rating ?? 0,
-    totalReviews: clubRow.total_reviews ?? 0,
-    status: clubRow.status ?? 'unverified',
-    description: clubRow.about ?? clubRow.description ?? '',
-    stats: clubRow.stats ?? { facilities: 0, coaching: 0, community: 0, value: 0 },
+  const claimStatus = clubRow.claim_status ?? 'unclaimed'
+  const claimedByUserId = clubRow.claimed_by_user_id ?? null
+  const contactName = clubRow.contact_name ?? null
+  const contactEmail = clubRow.contact_email ?? clubRow.admin_email ?? clubRow.email ?? null
+  const contactPhone = clubRow.contact_phone ?? clubRow.admin_phone ?? clubRow.phone ?? null
+
+  const rawStats = (clubRow.stats ?? {}) as Record<string, number | string | null | undefined>
+
+  const toNullableNumber = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+    if (typeof value === 'string' && value.trim().length > 0) {
+      const numeric = Number(value)
+      if (Number.isFinite(numeric)) return numeric
+    }
+    return null
   }
+
+  const statsValue = (key: 'facilities' | 'coaching' | 'community' | 'value') =>
+    toNullableNumber(rawStats[key]) ?? toNullableNumber((clubRow as Record<string, unknown>)[`${key}_rating`])
+
+  const leagues = parseLeagues(clubRow.competition_level ?? clubRow.league ?? '')
+
+  const clubProfile: ClubProfile = {
+    id: clubRow.id,
+    name: clubRow.club_name ?? clubRow.name ?? 'Untitled Club',
+    logo: clubRow.logo_url ?? clubRow.logo ?? null,
+    location: [clubRow.city, clubRow.state].filter(Boolean).join(', ') || clubRow.location || 'Location unavailable',
+    founded: clubRow.founded ? String(clubRow.founded) : null,
+    members: clubRow.members_count ?? clubRow.members ?? null,
+    rating: typeof clubRow.rating === 'number' ? clubRow.rating : null,
+    totalReviews: typeof clubRow.total_reviews === 'number' ? clubRow.total_reviews : null,
+    status: clubRow.status ?? null,
+    leagues,
+    description: clubRow.about ?? clubRow.description ?? null,
+    stats: {
+      facilities: statsValue('facilities'),
+      coaching: statsValue('coaching'),
+      community: statsValue('community'),
+      value: statsValue('value'),
+    },
+    contactEmail,
+    contactPhone,
+  }
+
+  const formatStatusLabel = (value: string) =>
+    value
+      .split(/[_\s]+/)
+      .filter(Boolean)
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(' ')
+
+  let clubAdminDetails: {
+    name: string | null
+    email: string | null
+    phone: string | null
+    status: string | null
+  } | null = null
+
+  if (claimedByUserId) {
+    try {
+      const adminClient = getSupabaseServerAdmin()
+      const [{ data: profileData, error: profileError }, userResult] = await Promise.all([
+        adminClient
+          .from('profiles')
+          .select('full_name, display_name, phone, phone_number, status')
+          .eq('user_id', claimedByUserId)
+          .maybeSingle(),
+        adminClient.auth.admin.getUserById(claimedByUserId),
+      ])
+
+      if (profileError) {
+        console.error('Failed to load claimed admin profile', profileError)
+      }
+      if (userResult.error) {
+        console.error('Failed to load claimed admin auth user', userResult.error)
+      }
+
+      const profileRecord = (profileData ?? null) as Record<string, unknown> | null
+      const authUser = userResult.data?.user ?? null
+
+      const profileName =
+        (profileRecord?.['full_name'] as string | undefined) ??
+        (profileRecord?.['display_name'] as string | undefined) ??
+        contactName ??
+        null
+
+      const profilePhone =
+        (profileRecord?.['phone'] as string | undefined) ??
+        (profileRecord?.['phone_number'] as string | undefined) ??
+        contactPhone ??
+        null
+
+      clubAdminDetails = {
+        name: profileName ?? authUser?.email ?? null,
+        email: authUser?.email ?? contactEmail ?? null,
+        phone: profilePhone,
+        status: (profileRecord?.['status'] as string | undefined) ?? null,
+      }
+    } catch (error) {
+      console.error('Unable to resolve claimed admin details', error)
+    }
+  }
+
+  const humanClaimStatus = formatStatusLabel(claimStatus)
+  const humanAdminStatus = clubAdminDetails?.status ? formatStatusLabel(clubAdminDetails.status) : null
 
   const { data: reviewsRows } = await supabase
     .from('reviews')
@@ -59,255 +156,116 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
     .order('inserted_at', { ascending: false })
     .limit(10)
 
-  const reviews = (reviewsRows || []).map((r: any) => ({
+  const reviews: ClubReview[] = (reviewsRows || []).map((r: any) => ({
     id: r.id,
     author: r.user_id ?? 'Anonymous',
-    authorAvatar: null,
-    rating: r.rating ?? 0,
+    rating: typeof r.rating === 'number' ? r.rating : Number(r.rating) || 0,
     date: r.inserted_at ? new Date(r.inserted_at).toLocaleDateString() : '',
-    content: r.content,
-    helpful: r.helpful ?? 0,
-    flagged: r.is_flagged ?? false,
+    content: r.content ?? '',
+    helpful: typeof r.helpful === 'number' ? r.helpful : null,
+    flagged: Boolean(r.is_flagged),
   }))
 
   const { data: discussionsRows } = await supabase
     .from('discussions')
-    .select('id, title, inserted_at, user_id, is_flagged')
+    .select('id, title, inserted_at, user_id, is_flagged, reply_count')
     .eq('club_id', id)
     .order('inserted_at', { ascending: false })
     .limit(10)
 
-  const discussions = (discussionsRows || []).map((d: any) => ({
+  const discussions: ClubDiscussion[] = (discussionsRows || []).map((d: any) => ({
     id: d.id,
-    title: d.title,
+    title: d.title ?? 'Untitled discussion',
     author: d.user_id ?? 'Anonymous',
-    replies: 0,
+    replies: typeof d.reply_count === 'number' ? d.reply_count : 0,
     lastActivity: d.inserted_at ? new Date(d.inserted_at).toLocaleString() : '',
-    flagged: d.is_flagged ?? false,
+    flagged: Boolean(d.is_flagged),
   }))
 
+  const claimInfo: ClaimInfo = {
+    statusLabel: humanClaimStatus,
+    adminStatusLabel: humanAdminStatus,
+    claimedByUserId,
+    adminDetails: clubAdminDetails
+      ? {
+          name: clubAdminDetails.name,
+          email: clubAdminDetails.email,
+          phone: clubAdminDetails.phone,
+        }
+      : null,
+  }
+
+  const headerActions = (
+    <div className="flex gap-2">
+      <Link href={`/protected/clubs/${clubProfile.id}/update`}>
+        <Button variant="outline" size="sm">
+          Edit Details
+        </Button>
+      </Link>
+      <ClubActionMenu clubId={clubProfile.id} canDelete={canDelete} />
+    </div>
+  )
+
+  const quickActionsCard = (
+    <Card>
+      <CardHeader>
+        <CardTitle>Quick Actions</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
+          <Flag className="h-4 w-4" />
+          View Flagged Content
+        </Button>
+        <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
+          <MessageSquare className="h-4 w-4" />
+          Moderate Discussions
+        </Button>
+        <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
+          <Users className="h-4 w-4" />
+          Manage Members
+        </Button>
+      </CardContent>
+    </Card>
+  )
+
+  const renderLeagueBadge = (league: string) => (
+    <Link key={league} href={`/protected/clubs?league=${encodeURIComponent(league)}`} className="inline-flex">
+      <Badge variant="secondary" className="cursor-pointer">
+        {league}
+      </Badge>
+    </Link>
+  )
+
+  const renderReviewActions = (_review: ClubReview) => (
+    <div className="flex flex-wrap items-center justify-between gap-3 sm:flex-nowrap">
+      <button className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
+        <ThumbsUp className="h-3 w-3" />
+        Mark helpful
+      </button>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" className="h-auto px-0 text-xs">
+          Reply
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8">
+          <MoreVertical className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+
   return (
-    <>
-      {/* Header with breadcrumb */}
-      <div className="border-b border-border bg-muted/30">
-        <div className="mx-auto max-w-7xl px-6 py-4 sm:px-8">
-          <Link
-            href="/protected/clubs"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Clubs
-          </Link>
-        </div>
-      </div>
-
-      {/* Club Header */}
-  <div className="border-b border-border bg-linear-to-b from-muted/50 to-background">
-        <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-            <div className="flex gap-6">
-              <Avatar className="h-24 w-24 rounded-xl border-2 border-border shadow-lg">
-                {club.logo ? (
-                  <AvatarImage src={club.logo} alt={club.name} className="rounded-xl" />
-                ) : (
-                  <AvatarFallback className="text-2xl">{club.name.substring(0, 2)}</AvatarFallback>
-                )}
-              </Avatar>
-
-              <div className="flex flex-col gap-3 min-w-0">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-bold tracking-tight text-foreground wrap-break-word text-wrap">{club.name}</h1>
-                  {club.status === 'verified' && (
-                    <Badge className="gap-1">
-                      <Shield className="h-3 w-3" />
-                      Verified
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4" />
-                    {club.location}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="h-4 w-4" />
-                    Founded {club.founded}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Users className="h-4 w-4" />
-                    {club.members} members
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-4 w-4 ${i < Math.floor(club.rating) ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-sm font-medium text-foreground">{club.rating}</span>
-                  <span className="text-sm text-muted-foreground">({club.totalReviews} reviews)</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Link href={`/protected/clubs/${club.id}/update`}>
-                <Button variant="outline" size="sm">Edit Details</Button>
-              </Link>
-              <ClubActionMenu clubId={club.id} canDelete={canDelete} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Left Column - Stats and Quick Actions */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Club Statistics</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <StatRow label="Facilities" value={club.stats.facilities} />
-                <StatRow label="Coaching" value={club.stats.coaching} />
-                <StatRow label="Community" value={club.stats.community} />
-                <StatRow label="Value" value={club.stats.value} />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
-                  <Flag className="h-4 w-4" />
-                  View Flagged Content
-                </Button>
-                <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
-                  <MessageSquare className="h-4 w-4" />
-                  Moderate Discussions
-                </Button>
-                <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
-                  <Users className="h-4 w-4" />
-                  Manage Members
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right Column - Overview / Reviews / Discussions */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-wrap">About <span className="block text-wrap">{club.name}</span></CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="leading-relaxed text-muted-foreground text-wrap">{club.description}</p>
-
-                <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  <div className="rounded-lg border border-border bg-muted/30 p-4">
-                    <p className="text-2xl font-bold text-foreground">{club.members}</p>
-                    <p className="text-sm text-muted-foreground">Members</p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-muted/30 p-4">
-                    <p className="text-2xl font-bold text-foreground">{club.totalReviews}</p>
-                    <p className="text-sm text-muted-foreground">Reviews</p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-muted/30 p-4">
-                    <p className="text-2xl font-bold text-foreground">{club.rating}</p>
-                    <p className="text-sm text-muted-foreground">Rating</p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-muted/30 p-4">
-                    <p className="text-2xl font-bold text-foreground">{club.league}</p>
-                    <p className="text-sm text-muted-foreground">League</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>User Reviews</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="rounded-lg border border-border bg-muted/20 p-4 transition-colors hover:bg-muted/40">
-                      <div className="flex items-start justify-between">
-                        <div className="flex gap-3">
-                          <Avatar className="h-10 w-10">
-                            {review.authorAvatar ? (
-                              <AvatarImage src={review.authorAvatar} alt={review.author} />
-                            ) : (
-                              <AvatarFallback>{String(review.author).substring(0, 2)}</AvatarFallback>
-                            )}
-                          </Avatar>
-
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium text-foreground">{review.author}</p>
-                              <div className="flex items-center gap-1">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star key={i} className={`h-3 w-3 ${i < review.rating ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`} />
-                                ))}
-                              </div>
-                              {review.flagged && (
-                                <Badge variant="destructive" className="gap-1">
-                                  <Flag className="h-3 w-3" />
-                                  Flagged
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">{review.date}</p>
-                            <p className="mt-2 text-sm leading-relaxed text-foreground">{review.content}</p>
-                            <div className="mt-3 flex items-center gap-4">
-                              <button className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
-                                <ThumbsUp className="h-3 w-3" />
-                                {review.helpful} helpful
-                              </button>
-                              <Button variant="ghost" size="sm" className="h-auto p-0 text-xs">Reply</Button>
-                            </div>
-                          </div>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Discussion Threads</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {discussions.map((d) => (
-                    <div key={d.id} className="rounded-lg border border-border bg-muted/20 p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-foreground">{d.title}</p>
-                          <p className="text-xs text-muted-foreground">{d.replies} replies • {d.lastActivity}</p>
-                        </div>
-                        {d.flagged && <Badge variant="destructive">Flagged</Badge>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    </>
+    <ClubProfileView
+      backHref="/protected/clubs"
+      club={clubProfile}
+      verified={clubProfile.status === 'verified'}
+      reviews={reviews}
+      discussions={discussions}
+      headerActions={headerActions}
+      extraAsideSections={quickActionsCard}
+      showClaimInfo
+      claimInfo={claimInfo}
+      renderReviewActions={renderReviewActions}
+      renderLeagueBadge={renderLeagueBadge}
+    />
   )
 }

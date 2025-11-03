@@ -6,11 +6,14 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { canonicalizeLeague, LEAGUE_PRESETS } from "@/constants/leagues"
+import parseLeagues from "@/utils/parseLeagues"
 import { AlertCircle, MapPin, Plus, Search } from 'lucide-react'
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
-type Club = {
+type ClubRow = {
   id: string
   club_name: string
   city: string
@@ -18,13 +21,31 @@ type Club = {
   logo_url?: string
   about?: string
   founded?: string
+  competition_level?: string | null
 }
 
-export default function ClubsClient({ initialClubs }: { initialClubs: Club[] }) {
-  const [clubs, setClubs] = useState<Club[]>(initialClubs || [])
+type Club = ClubRow & { leagues: string[] }
+
+const enhanceClubs = (rows: ClubRow[] = []): Club[] =>
+  rows.map((club) => ({
+    ...club,
+    leagues: parseLeagues(club?.competition_level ?? ""),
+  }))
+
+export default function ClubsClient({ initialClubs }: { initialClubs: ClubRow[] }) {
+  const [clubs, setClubs] = useState<Club[]>(() => enhanceClubs(initialClubs || []))
   const [searchQuery, setSearchQuery] = useState("")
   const [cityFilter, setCityFilter] = useState("all")
   const [profileFilter, setProfileFilter] = useState("all")
+  const [leagueFilter, setLeagueFilter] = useState<string>("all")
+
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const router = useRouter()
+
+  useEffect(() => {
+    setClubs(enhanceClubs(initialClubs || []))
+  }, [initialClubs])
 
   useEffect(() => {
     // mount
@@ -46,7 +67,8 @@ export default function ClubsClient({ initialClubs }: { initialClubs: Club[] }) 
             }
             const data = await res.json()
             if (cancelled) return
-            setClubs(Array.isArray(data) ? data : (data?.data || []))
+            const rows = Array.isArray(data) ? data : (data?.data || [])
+            setClubs(enhanceClubs(rows))
             // fetch list done
           } catch (err) {
             // fetch list error
@@ -96,9 +118,66 @@ export default function ClubsClient({ initialClubs }: { initialClubs: Club[] }) 
         (profileFilter === "incomplete" && isIncomplete(club)) ||
         (profileFilter === "complete" && !isIncomplete(club))
 
-      return matchesSearch && matchesCity && matchesProfile
+      const matchesLeague =
+        leagueFilter === "all" ||
+        (club.leagues || []).some((league) => league.toLowerCase() === leagueFilter.toLowerCase())
+
+      return matchesSearch && matchesCity && matchesProfile && matchesLeague
     })
-  }, [clubs, searchQuery, cityFilter, profileFilter])
+  }, [clubs, searchQuery, cityFilter, profileFilter, leagueFilter])
+
+  const leagues = useMemo(() => {
+    const seen = new Set<string>()
+    clubs.forEach((club) => {
+      (club.leagues || []).forEach((league) => {
+        if (!seen.has(league)) {
+          seen.add(league)
+        }
+      })
+    })
+    return Array.from(seen).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+  }, [clubs])
+
+  useEffect(() => {
+    const param = searchParams.get("league")
+    const canonicalValue = param && param.trim().length > 0 ? canonicalizeLeague(param) : ""
+    const next = canonicalValue || "all"
+    setLeagueFilter((prev) => (prev === next ? prev : next))
+  }, [searchParams])
+
+  const applyLeagueFilter = useCallback(
+    (raw: string) => {
+      const normalized = raw === "all" ? "all" : canonicalizeLeague(raw)
+      const next = normalized || "all"
+      setLeagueFilter(next)
+      const params = new URLSearchParams(searchParams.toString())
+      if (next === "all") {
+        params.delete("league")
+      } else {
+        params.set("league", next)
+      }
+      const query = params.toString()
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+    },
+    [pathname, router, searchParams]
+  )
+
+  const handleLeagueClick = useCallback(
+    (value: string) => {
+      const canonicalValue = canonicalizeLeague(value)
+      const isActive = leagueFilter.toLowerCase() === canonicalValue.toLowerCase()
+      applyLeagueFilter(isActive ? "all" : canonicalValue)
+    },
+    [applyLeagueFilter, leagueFilter]
+  )
+
+  const leagueChipClass = (active: boolean) =>
+    [
+      "rounded-full border px-3 py-1 text-xs font-medium transition",
+      active
+        ? "border-primary bg-primary text-primary-foreground shadow-sm"
+        : "border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground",
+    ].join(" ")
 
   return (
     <div className="space-y-6">
@@ -183,10 +262,61 @@ export default function ClubsClient({ initialClubs }: { initialClubs: Club[] }) 
             </select>
           </div>
 
-          {(searchQuery || cityFilter !== "all" || profileFilter !== "all") && (
+          {(LEAGUE_PRESETS.length > 0 || leagues.length > 0) && (
+            <div className="mt-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Filter by League</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleLeagueClick("all")}
+                  className={leagueChipClass(leagueFilter === "all")}
+                >
+                  All Leagues
+                </button>
+                {[...LEAGUE_PRESETS]
+                  .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+                  .map((preset) => (
+                  <button
+                    key={`preset-${preset.name}`}
+                    type="button"
+                    onClick={() => handleLeagueClick(preset.name)}
+                    className={leagueChipClass(leagueFilter.toLowerCase() === preset.name.toLowerCase())}
+                  >
+                    {preset.name}
+                  </button>
+                ))}
+                {leagues
+                  .filter((league) => !LEAGUE_PRESETS.some((preset) => preset.name.toLowerCase() === league.toLowerCase()))
+                  .map((league) => (
+                    <button
+                      key={league}
+                      type="button"
+                      onClick={() => handleLeagueClick(league)}
+                      className={leagueChipClass(leagueFilter.toLowerCase() === league.toLowerCase())}
+                    >
+                      {league}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {(searchQuery || cityFilter !== "all" || profileFilter !== "all" || leagueFilter !== "all") && (
             <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
               <span>Showing {filteredClubs.length} of {clubs.length} clubs</span>
-              <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(""); setCityFilter("all"); setProfileFilter("all") }} className="h-auto p-0 text-xs">Clear filters</Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery("")
+                  setCityFilter("all")
+                  setProfileFilter("all")
+                  applyLeagueFilter("all")
+                }}
+                className="h-auto p-0 text-xs"
+              >
+                Clear filters
+              </Button>
             </div>
           )}
         </CardContent>

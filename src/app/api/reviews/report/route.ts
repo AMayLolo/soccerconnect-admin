@@ -1,0 +1,48 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { env } from "@/env.mjs";
+
+export async function POST(req: Request) {
+  try {
+    const token = req.headers.get("Authorization")?.replace("Bearer ", "");
+
+    if (!token)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    // Validate user
+    const authClient = createClient(
+      env.NEXT_PUBLIC_SUPABASE_URL,
+      env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
+    );
+
+    const { data: sessionData } = await authClient.auth.getUser();
+    const user = sessionData?.user;
+
+    if (!user)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { review_id, reason } = await req.json();
+
+    const service = createClient(
+      env.SUPABASE_URL,
+      env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    await service
+      .from("reviews")
+      .update({
+        flagged: true,
+        report_reason: reason,
+      })
+      .eq("id", review_id);
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Report Error:", err);
+    return NextResponse.json(
+      { error: String(err) },
+      { status: 500 }
+    );
+  }
+}

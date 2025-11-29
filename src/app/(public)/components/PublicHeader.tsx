@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Image from "next/image";
 
 export default function PublicHeader() {
   const pathname = usePathname();
@@ -16,8 +16,8 @@ export default function PublicHeader() {
           <Image 
             src="/branding/logos/logo-shield.svg" 
             alt="SoccerConnect" 
-            width={40} 
-            height={40}
+            width={56} 
+            height={56}
             className="transition-transform group-hover:scale-105"
           />
           <span className="font-bold text-xl text-[#1c3f60]">

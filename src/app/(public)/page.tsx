@@ -1,7 +1,7 @@
-import HeroSection from "./components/HeroSection";
-import ValueProps from "./components/ValueProps";
 import FeaturedClubs from "./components/FeaturedClubs";
+import HeroSection from "./components/HeroSection";
 import ReviewHighlights from "./components/ReviewHighlights";
+import ValueProps from "./components/ValueProps";
 
 export default function HomePage() {
   return (

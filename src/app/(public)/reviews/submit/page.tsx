@@ -35,7 +35,10 @@ export default async function SubmitReviewPage({
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (!session) redirect("/auth/login");
+  if (!session) {
+    // Redirect to login with return URL
+    redirect(`/login?redirect=/reviews/submit?club_id=${club_id}`);
+  }
 
   return <ReviewForm clubId={club_id} clubName={club?.club_name || "this club"} />;
 }

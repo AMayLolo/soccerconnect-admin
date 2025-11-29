@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { env } from "@/env.mjs";
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
 
 export async function GET(request: Request) {
   try {
+    const ip = getClientIp(request.headers);
+    const rl = rateLimit('adminReview', ip);
+    if (!rl.allowed) return NextResponse.json({ error: 'Rate limit exceeded', retryInMs: rl.retryInMs }, { status: 429 });
     // 1. Check Authorization header
     const authHeader = request.headers.get("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -42,9 +46,9 @@ export async function GET(request: Request) {
     }
 
     // 4. Service role client for reading stats safely
-    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (!env.ADMIN_FEATURES_ENABLED || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json(
-        { error: "Service role credentials not configured" },
+        { error: "Admin features disabled or service role credentials not configured" },
         { status: 500 }
       );
     }

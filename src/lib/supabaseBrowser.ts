@@ -1,4 +1,4 @@
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createBrowserClient } from "@supabase/ssr"
 
 // Returns a single Supabase client instance attached to window to avoid
 // creating multiple GoTrueClient instances in the same browser context.
@@ -43,7 +43,10 @@ export function getSupabaseBrowserClient() {
   // store on window to keep a single instance across module reloads/HMR
   const w = window as any
   if (!w.__supabase_browser_client) {
-    w.__supabase_browser_client = createClientComponentClient()
+    w.__supabase_browser_client = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
   }
   return w.__supabase_browser_client
 }

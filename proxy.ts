@@ -14,22 +14,47 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+  const host = req.headers.get("host") || "";
 
-  // 1. Public routes: let them through immediately, no Supabase hit needed.
-  const isPublic =
+  // --- Domain model assumptions ---
+  // admin.<rootDomain>   → Admin application (protected interface)
+  // <rootDomain> / www.<rootDomain> → Public marketing surface
+  // We derive root domain by stripping leading admin./www. if present.
+  const isLocalhost = host.startsWith("localhost");
+  const rootDomain = host.replace(/^admin\./, "").replace(/^www\./, "");
+  const adminHost = `admin.${rootDomain}`;
+  // Treat localhost as an "admin" host to simplify local dev (no subdomain needed)
+  const isAdminHost = isLocalhost || host.startsWith("admin.");
+
+  // 1. Canonicalize login to admin subdomain so auth cookies remain scoped.
+  if (pathname.startsWith("/login") && !isAdminHost && host && !isLocalhost) {
+    const redirectUrl = new URL(req.url);
+    redirectUrl.hostname = adminHost;
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // 2. If requesting a protected path from a non-admin host, redirect to admin host.
+  const isProtectedByPath = pathname.startsWith("/protected");
+  if (isProtectedByPath && !isAdminHost && host && !isLocalhost) {
+    const target = new URL(req.url);
+    target.hostname = adminHost;
+    return NextResponse.redirect(target);
+  }
+
+  // 3. Public *asset* and marketing paths that never need user context when NOT on admin host.
+  const isAlwaysPublicPath =
     pathname === "/" ||
-    pathname.startsWith("/login") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico";
 
-  if (isPublic) {
+  if (isAlwaysPublicPath && !isAdminHost) {
+    // No auth check required on public domain – let it stream.
     return NextResponse.next();
   }
 
-  // 2. Create a response and bind Supabase SSR client to req/res cookies.
-  //    This lets Supabase read/refresh auth cookies.
+  // 4. Create response and bind Supabase SSR client for any remaining cases
+  //    (admin host OR non-public path requiring potential auth).
   const res = NextResponse.next();
-  
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -39,7 +64,7 @@ export async function proxy(req: NextRequest) {
           return req.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => 
+          cookiesToSet.forEach(({ name, value, options }) =>
             res.cookies.set(name, value, options)
           );
         },
@@ -51,17 +76,21 @@ export async function proxy(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 3. Protected routes need auth.
-  const isProtected = pathname.startsWith("/protected");
-
-  if (isProtected && !user) {
-    // Not logged in → send to /login and remember where they wanted to go
+  // 5. Enforce auth for protected paths (already normalized to admin host).
+  if (isProtectedByPath && !user) {
     const loginUrl = new URL("/login", req.url);
+    loginUrl.hostname = adminHost; // ensure redirect lands on admin
     loginUrl.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // 4. Auth is fine (or route isn't protected) → continue.
+  // 6. Convenience: If user hits admin root and is logged in, send them to dashboard.
+  if (isAdminHost && pathname === "/" && user) {
+    const dashUrl = new URL("/protected", req.url);
+    return NextResponse.redirect(dashUrl);
+  }
+
+  // 7. Otherwise pass through.
   return res;
 }
 

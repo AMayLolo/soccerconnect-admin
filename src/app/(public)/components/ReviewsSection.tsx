@@ -21,9 +21,11 @@ type Review = {
 export function ReviewsSection({
   initialReviews,
   clubId,
+  loading = false,
 }: {
   initialReviews: Review[];
   clubId: string;
+  loading?: boolean;
 }) {
   const [sort, setSort] = useState("newest");
 
@@ -76,7 +78,27 @@ export function ReviewsSection({
       </div>
 
       {/* REVIEWS LIST */}
-      {sortedReviews.length === 0 ? (
+      {loading ? (
+        <div className="space-y-4" aria-label="Loading reviews">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="border rounded-lg p-4 bg-card shadow-sm animate-pulse flex flex-col gap-3"
+            >
+              <div className="flex items-center justify-between">
+                <div className="h-3 w-24 bg-muted rounded" />
+                <div className="h-3 w-10 bg-muted rounded" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-full bg-muted rounded" />
+                <div className="h-3 w-5/6 bg-muted rounded" />
+                <div className="h-3 w-3/5 bg-muted rounded" />
+              </div>
+              <div className="h-2 w-20 bg-muted rounded" />
+            </div>
+          ))}
+        </div>
+      ) : sortedReviews.length === 0 ? (
         <p className="text-muted-foreground">No reviews yet.</p>
       ) : (
         <div className="space-y-4">

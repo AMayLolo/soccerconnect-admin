@@ -20,7 +20,7 @@
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "incremental": true,
-    "types": ["react", "react-dom", "node"],
+  "types": ["react", "react-dom", "node", "@playwright/test"],
     "plugins": [{ "name": "next" }]
   },
   "include": [

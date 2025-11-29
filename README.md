@@ -1,50 +1,93 @@
-# Welcome to your Expo app 👋
+# SoccerConnect Admin & Public Site
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Next.js 16 (App Router) application powering the SoccerConnect admin portal and public marketing pages. Supabase provides auth, data, and storage.
 
-## Get started
+## Tech Stack
+| Layer | Tech |
+|-------|------|
+| Framework | Next.js 16 (App Router, Turbopack) |
+| Styling | Tailwind CSS + shadcn/ui + Radix primitives |
+| Backend | Supabase (Postgres, Auth, Storage) |
+| Auth | Supabase cookie-based session (SSR via `@supabase/ssr`) |
+| Types | TypeScript (strict) |
+| Testing | Playwright (smoke tests TBD) |
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+## Local Development
 ```bash
-npm run reset-project
+npm install
+npm run dev
+```
+App runs at `http://localhost:3000`.
+
+## Production Build
+```bash
+npm run build
+npm start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Environment Variables
+Only the Supabase anonymous client credentials are strictly required for a build. Administrative endpoints (review moderation, stats) additionally need the service role key.
 
-## Learn more
+| Variable | Required | Purpose | Notes |
+|----------|----------|---------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase project URL | Public, used client + server |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Supabase anon key | Public auth/session |
+| `SUPABASE_URL` | ➖ (fallback to public) | Explicit server URL | Optional override |
+| `SUPABASE_SERVICE_ROLE_KEY` | ➖ for basic site / ✅ for admin moderation | Service role operations (flags, stats) | Keep secret (server only) |
+| `NEXT_PUBLIC_SUPABASE_LOGO_BUCKET` | ➖ | Storage bucket name | Defaults to `logos` |
+| `NEXT_PUBLIC_SITE_URL` | ➖ | Public marketing canonical URL | Derived from `VERCEL_URL` if absent |
+| `NEXT_PUBLIC_APP_URL` | ➖ | Admin domain URL | Falls back to SITE_URL |
+| `NEXT_PUBLIC_DOMAIN` | ➖ | Apex/domain display | Derived from SITE_URL hostname |
+| `ADMIN_FEATURES_ENABLED` | ➖ | Feature flag to enable admin service-role routes | Defaults off if unset |
 
-To learn more about developing your project with Expo, look at the following resources:
+Validation & fallback logic lives in `src/env.mjs`. Health inspection endpoint: `GET /api/health/env`.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Adding Admin Features in Production
+Set:
+```
+SUPABASE_SERVICE_ROLE_KEY=xxxx
+ADMIN_FEATURES_ENABLED=true
+```
+Without these, moderation endpoints return 500 with a clear JSON error.
 
-## Join the community
+## Domain-Based Routing
+Logic in `proxy.ts` will differentiate public vs admin traffic (planned enhancement):
+1. Requests with host matching `admin.<domain>` are expected to use protected/admin paths.
+2. Public host (`www.` or apex) should never expose `/protected` without auth; unauthenticated gets redirected to `/login`.
 
-Join our community of developers creating universal apps.
+## Review Moderation Endpoints (Admin)
+All under `/api/admin/reviews/*` (flag clearing, hide, restore) and `/api/admin/stats` require:
+- Valid bearer token (Supabase session)
+- User role = `admin`
+- Feature flag + service role key present
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Health Endpoint
+`/api/health/env` returns JSON summary (redacted) of active env configuration for debugging deployments.
+
+## Rate Limiting (Planned)
+Incoming endpoints for report & moderation will be protected by lightweight in-memory IP/token buckets. Consider Redis for horizontal scaling later.
+
+## Testing (Planned)
+Initial Playwright smoke tests will verify:
+- Public home renders
+- Clubs list loads
+- Redirect to login for `/protected` when unauthenticated
+- Authenticated admin sees stats
+
+## Scripts
+| Script | Purpose |
+|--------|---------|
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm start` | Start production server |
+| `npm run lint` | ESLint code quality |
+
+## CI (Planned)
+GitHub Actions workflow will run install → type check → build. Future: add Playwright smoke tests.
+
+## Security Notes
+Never expose `SUPABASE_SERVICE_ROLE_KEY` client-side. Guarded in server routes only; audited via search for occurrences.
+
+## License
+Private / Proprietary (update if needed).
+

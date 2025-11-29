@@ -2,7 +2,6 @@
 
 import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser"
 import { Filters as NormalizeFilters, normalizeStatsKey } from "@/utils/normalizeStatsKey"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import React, { createContext, useContext, useEffect, useRef, useState } from "react"
 
 type Filters = NormalizeFilters
@@ -82,7 +81,7 @@ export default function StatsProvider({ children, initial }: { children: React.R
 
   // Use a browser-global singleton to avoid creating multiple GoTrueClient
   // instances across the app (this prevents the runtime warning shown in the console).
-  const supabase = typeof window !== "undefined" ? getSupabaseBrowserClient() : createClientComponentClient()
+  const supabase = typeof window !== "undefined" ? getSupabaseBrowserClient() : ({} as any)
   const [counts, setCounts] = useState<CountsMap>(initial || {})
 
   // refs for channels and subscriber counts

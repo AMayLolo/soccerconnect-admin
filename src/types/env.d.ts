@@ -11,5 +11,6 @@ declare namespace NodeJS {
 
   SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
+  ADMIN_FEATURES_ENABLED?: string;
   }
 }

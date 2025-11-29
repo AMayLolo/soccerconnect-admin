@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition, useState } from "react";
+import { useNotify } from "../../../../../hooks/useNotify";
 import { resolveFlaggedAction } from "./resolveFlaggedAction";
 
 export default function ResolveFlaggedButton({
@@ -12,6 +13,7 @@ export default function ResolveFlaggedButton({
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const notify = useNotify();
 
   const handleResolve = () => {
     setError(null);
@@ -19,8 +21,11 @@ export default function ResolveFlaggedButton({
       const result = await resolveFlaggedAction(reportId);
       if (result.ok) {
         if (onResolved) onResolved(); // 🔥 triggers client-side update
+        notify.success("Report resolved");
       } else {
-        setError(result.error || "Error resolving report");
+        const msg = result.error || "Error resolving report";
+        setError(msg);
+        notify.error(msg);
       }
     });
   };

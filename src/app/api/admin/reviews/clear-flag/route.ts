@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { env } from "@/env.mjs";
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
   try {
+    // Rate limit admin review modifications
+    const ip = getClientIp(req.headers);
+    const rl = rateLimit('adminReview', ip);
+    if (!rl.allowed) return NextResponse.json({ error: 'Rate limit exceeded', retryInMs: rl.retryInMs }, { status: 429 });
     const token = req.headers.get("Authorization")?.replace("Bearer ", "");
 
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -31,9 +36,9 @@ export async function POST(req: Request) {
 
     const { id } = await req.json();
     // Guard: service role credentials must be configured for this administrative action
-    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (!env.ADMIN_FEATURES_ENABLED || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json(
-        { error: "Service role credentials not configured" },
+        { error: "Admin features disabled or service role credentials not configured" },
         { status: 500 }
       );
     }

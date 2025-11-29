@@ -25,6 +25,7 @@ const publicSchema = z.object({
 const serverSchema = z.object({
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  ADMIN_FEATURES_ENABLED: z.string().optional(), // treat presence of 'true' as enabled
 });
 
 // ----------------------------------------
@@ -45,6 +46,7 @@ const parsed = merged.safeParse({
 
   SUPABASE_URL: process.env.SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  ADMIN_FEATURES_ENABLED: process.env.ADMIN_FEATURES_ENABLED,
 });
 
 if (!parsed.success) {
@@ -76,6 +78,7 @@ export const env = {
   NEXT_PUBLIC_APP_URL: APP_URL,
   NEXT_PUBLIC_DOMAIN: DOMAIN,
   SUPABASE_URL,
+  ADMIN_FEATURES_ENABLED: raw.ADMIN_FEATURES_ENABLED === 'true',
 };
 
 export const BASE_URL = getBaseUrl();

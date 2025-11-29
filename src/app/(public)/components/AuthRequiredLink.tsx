@@ -48,13 +48,13 @@ export default function AuthRequiredLink({
 
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
-                href="/auth/signup"
+                href={`/auth/signup?redirect=${encodeURIComponent(href)}`}
                 className="flex-1 px-4 py-2.5 bg-[#0d7a9b] text-white rounded-lg hover:bg-[#0a5f7a] transition-colors font-medium text-center"
               >
                 Create Account
               </Link>
               <Link
-                href="/auth/login"
+                href={`/auth/login?redirect=${encodeURIComponent(href)}`}
                 className="flex-1 px-4 py-2.5 border-2 border-[#0d7a9b] text-[#0d7a9b] rounded-lg hover:bg-[#0d7a9b] hover:text-white transition-colors font-medium text-center"
               >
                 Sign In

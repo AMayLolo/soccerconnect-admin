@@ -1,11 +1,17 @@
+"use client";
+
 import { signupAction } from "./action";
+import { useSearchParams } from "next/navigation";
 
 export default function SignupPage() {
+  const params = useSearchParams();
+  const redirect = params.get("redirect") || "";
   return (
     <div className="max-w-md mx-auto py-20">
       <h1 className="text-3xl font-semibold mb-6">Create an Account</h1>
 
       <form action={signupAction} className="space-y-6">
+        {redirect && <input type="hidden" name="redirect" value={redirect} />}
         <div>
           <label className="block text-sm mb-1">Email</label>
           <input

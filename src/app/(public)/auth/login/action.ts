@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 export async function loginAction(prev: any, formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const redirectTo = (formData.get("redirect") as string) || "/protected";
 
   const supabase = await createServerSupabaseClient();
 
@@ -16,5 +17,5 @@ export async function loginAction(prev: any, formData: FormData) {
 
   if (error) return { error: error.message };
 
-  redirect("/protected");
+  redirect(redirectTo);
 }

@@ -14,5 +14,7 @@ export async function signupAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  redirect("/auth/login");
+  const redirectTo = (formData.get("redirect") as string) || "/protected";
+  // After signup, send user to login and preserve redirect intent
+  redirect(`/auth/login?redirect=${encodeURIComponent(redirectTo)}`);
 }

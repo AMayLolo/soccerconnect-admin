@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ReviewForm } from "./ReviewForm";
 import Link from "next/link";
+import ClubPicker from "./ClubPicker";
 
 export default async function SubmitReviewPage({ 
   searchParams 
@@ -30,20 +31,16 @@ export default async function SubmitReviewPage({
           <p className="text-gray-600">First, select a club to review</p>
         </div>
         
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <p className="text-gray-600 mb-6">Browse our clubs directory to find the club you want to review</p>
-          <Link 
-            href="/clubs"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#0d7a9b] text-white rounded-lg hover:bg-[#0a5f7a] transition-colors font-medium"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            Browse Clubs
-          </Link>
+        <div className="bg-white rounded-xl border border-gray-200 p-8">
+          <ClubPicker />
+          <div className="text-center mt-6">
+            <Link 
+              href="/clubs"
+              className="inline-flex items-center gap-2 px-4 py-2 text-[#0d7a9b] hover:underline font-medium"
+            >
+              Or browse all clubs
+            </Link>
+          </div>
         </div>
       </div>
     );

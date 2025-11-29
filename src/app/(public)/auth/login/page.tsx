@@ -2,9 +2,12 @@
 
 import { useFormState } from "react-dom";
 import { loginAction } from "./action";
+import { useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const [state, formAction] = useFormState(loginAction, { error: "" });
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "";
 
   return (
     <div className="max-w-md mx-auto mt-20">
@@ -13,6 +16,7 @@ export default function LoginPage() {
       {state.error && <p className="text-red-600 mb-4">{state.error}</p>}
 
       <form action={formAction} className="space-y-6">
+        {redirect && <input type="hidden" name="redirect" value={redirect} />}
         <input name="email" type="email" required className="w-full border px-3 py-2" />
         <input name="password" type="password" required className="w-full border px-3 py-2" />
 

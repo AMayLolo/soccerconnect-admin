@@ -26,14 +26,15 @@ export default async function ClubsPage({
     .select("id, club_name, city, state, badge_logo_url");
 
   if (query) {
-    clubQuery = clubQuery.ilike("club_name", `%${query}%`);
+    // Search in both club_name and city
+    clubQuery = clubQuery.or(`club_name.ilike.%${query}%,city.ilike.%${query}%`);
   }
 
   if (stateFilter) {
     clubQuery = clubQuery.eq("state", stateFilter);
   }
 
-  const { data: clubs } = await clubQuery.order("club_name").limit(100);
+  const { data: clubs } = await clubQuery.order("club_name").limit(500);
 
   // Group clubs by state if no filter is applied
   const groupedClubs = !stateFilter && !query && clubs

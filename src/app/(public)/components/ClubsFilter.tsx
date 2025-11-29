@@ -63,14 +63,14 @@ export default function ClubsFilter({
         {/* Search */}
         <div className="flex-1">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Search by Name
+            Search by Name or City
           </label>
           <form onSubmit={handleSearch} className="flex gap-2">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Club name..."
+              placeholder="Club name or city..."
               className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d7a9b] focus:border-transparent"
             />
             <button

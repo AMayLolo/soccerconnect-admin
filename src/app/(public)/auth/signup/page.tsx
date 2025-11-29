@@ -1,7 +1,7 @@
 "use client";
 
-import { signupAction } from "./action";
 import { useSearchParams } from "next/navigation";
+import { signupAction } from "./action";
 
 export default function SignupPage() {
   const params = useSearchParams();

@@ -52,7 +52,7 @@ async function ensureUser(user: { email: string; password: string; full_name: st
       {
         user_id: userId,
         full_name: user.full_name,
-        approved_role: user.role ?? "parent",
+        approved_role: null, // keep null to satisfy constraints; non-admin by default
         status: "active",
         updated_at: new Date().toISOString(),
       },
@@ -71,10 +71,34 @@ async function insertReview(review: {
   reviewer_type: "parent" | "player" | "staff";
   inserted_at?: string;
 }) {
+  // Upsert-like behavior: if this user already reviewed this club, update instead of insert
+  const { data: existing } = await supabase
+    .from("reviews")
+    .select("id")
+    .eq("club_id", review.club_id)
+    .eq("user_id", review.user_id)
+    .maybeSingle();
+
   const payload: any = { ...review };
   if (!payload.inserted_at) delete payload.inserted_at;
-  const { error } = await supabase.from("reviews").insert(payload);
-  if (error) throw error;
+
+  if (existing?.id) {
+    const { error } = await supabase
+      .from("reviews")
+      .update({
+        rating: review.rating,
+        comment: review.comment,
+        reviewer_type: review.reviewer_type,
+        // preserve inserted_at if table allows; otherwise updated_at only
+        ...(review.inserted_at ? { inserted_at: review.inserted_at } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from("reviews").insert(payload);
+    if (error) throw error;
+  }
 }
 
 function daysAgo(n: number) {

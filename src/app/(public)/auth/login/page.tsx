@@ -1,8 +1,8 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useFormState } from "react-dom";
 import { loginAction } from "./action";
-import { useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const [state, formAction] = useFormState(loginAction, { error: "" });

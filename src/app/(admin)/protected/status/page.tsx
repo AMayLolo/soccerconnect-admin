@@ -54,13 +54,13 @@ export default function SystemStatusPage() {
   };
 
   return (
-    <section className="space-y-6">
-      <header>
-        <h1 className="text-xl font-semibold text-neutral-900">System Status</h1>
-        <p className="text-sm text-neutral-600">
-          Live operational health of core services.
+    <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">System Status</h1>
+        <p className="text-gray-600">
+          Live operational health of core services
         </p>
-      </header>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatusCard
@@ -80,10 +80,10 @@ export default function SystemStatusPage() {
         />
       </div>
 
-      <div className="mt-8 text-[12px] text-neutral-500">
+      <div className="mt-8 text-sm text-gray-500 bg-gray-50 rounded-lg p-4 border border-gray-200">
         Status refreshes on page load. All systems should show green when healthy.
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -104,16 +104,22 @@ function StatusCard({
       : status === "error"
       ? "text-red-600"
       : "text-yellow-600";
+  const bgColor =
+    status === "ok"
+      ? "bg-green-50 border-green-200"
+      : status === "error"
+      ? "bg-red-50 border-red-200"
+      : "bg-yellow-50 border-yellow-200";
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-neutral-800">{label}</h2>
+    <div className={`rounded-lg border bg-white p-6 shadow-sm hover:shadow-md transition-shadow ${bgColor}`}>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm font-semibold text-gray-900">{label}</h2>
         <span className={`text-xs font-semibold ${color}`}>
           ● {statusText}
         </span>
       </div>
-      <p className="mt-1 text-[13px] text-neutral-600 leading-relaxed">
+      <p className="text-sm text-gray-600 leading-relaxed">
         {description}
       </p>
     </div>

@@ -1,8 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import Link from "next/link";
 import { signupAction } from "./action";
 
 function SignupForm() {

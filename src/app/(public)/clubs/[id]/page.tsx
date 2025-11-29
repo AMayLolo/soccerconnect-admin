@@ -1,7 +1,7 @@
 import { createClientRSC } from "@/lib/supabase/rsc";
 import Link from "next/link";
-import { ReviewsSection } from "../../components/ReviewsSection";
 import AuthRequiredLink from "../../components/AuthRequiredLink";
+import { ReviewsSection } from "../../components/ReviewsSection";
 
 export default async function ClubDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = createClientRSC();

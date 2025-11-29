@@ -1,9 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useFormState } from "react-dom";
-import Link from "next/link";
 import { loginAction } from "./action";
 
 function LoginForm() {

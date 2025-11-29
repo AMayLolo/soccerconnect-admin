@@ -57,52 +57,70 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
-      <h1 className="text-2xl font-semibold mb-6">Club Admin Approvals</h1>
-      {message && <p className="text-green-600 mb-4 text-sm">{message}</p>}
+    <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Club Admin Approvals</h1>
+        <p className="text-gray-600">Review and approve club administrator access requests</p>
+      </div>
+      
+      {message && (
+        <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200">
+          <p className="text-green-700 text-sm font-medium">{message}</p>
+        </div>
+      )}
 
       {loading ? (
-        <p>Loading…</p>
+        <div className="text-center py-12 bg-gray-50 rounded-lg">
+          <p className="text-gray-500">Loading requests...</p>
+        </div>
       ) : requests.length === 0 ? (
-        <p className="text-gray-600">No pending requests 🎉</p>
+        <div className="text-center py-12 bg-gray-50 rounded-lg">
+          <p className="text-gray-500">No pending requests 🎉</p>
+        </div>
       ) : (
-        <table className="w-full text-sm border rounded-lg overflow-hidden">
-          <thead className="bg-gray-100 text-left">
-            <tr>
-              <th className="p-3">Name</th>
-              <th className="p-3">Club</th>
-              <th className="p-3">Requested</th>
-              <th className="p-3">Date</th>
-              <th className="p-3 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map((r) => (
-              <tr key={r.user_id} className="border-t hover:bg-gray-50">
-                <td className="p-3">{r.display_name}</td>
-                <td className="p-3">{r.clubs?.club_name}</td>
-                <td className="p-3 capitalize">{r.requested_role}</td>
-                <td className="p-3">
-                  {new Date(r.inserted_at).toLocaleDateString()}
-                </td>
-                <td className="p-3 text-center space-x-2">
-                  <button
-                    onClick={() => handleAction(r.user_id, true)}
-                    className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleAction(r.user_id, false)}
-                    className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
-                  >
-                    Reject
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Club</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requested</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {requests.map((r) => (
+                  <tr key={r.user_id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{r.display_name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{r.clubs?.club_name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900 capitalize">{r.requested_role}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {new Date(r.inserted_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex gap-2 justify-center">
+                        <button
+                          onClick={() => handleAction(r.user_id, true)}
+                          className="px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleAction(r.user_id, false)}
+                          className="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );

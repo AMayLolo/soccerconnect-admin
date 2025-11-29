@@ -1,10 +1,20 @@
 "use server";
-import { createClientServer } from "@/lib/supabase/server";
 
-export async function loginAction(formData: FormData) {
-  const supabase = createClientServer();
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+
+export async function loginAction(prev: any, formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
-  return await supabase.auth.signInWithPassword({ email, password });
+  const supabase = await createServerSupabaseClient();
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) return { error: error.message };
+
+  redirect("/protected");
 }

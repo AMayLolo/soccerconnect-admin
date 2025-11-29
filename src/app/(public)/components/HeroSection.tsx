@@ -1,6 +1,6 @@
 export default function HeroSection() {
   return (
-    <section className="pt-20 pb-32 bg-gradient-to-b from-white to-gray-50">
+    <section className="pt-20 pb-32 bg-linear-to-b from-white to-gray-50">
       <div className="max-w-4xl mx-auto px-4 text-center">
         <h1 className="text-5xl font-bold tracking-tight text-black">
           Find the Right Youth Soccer Club.

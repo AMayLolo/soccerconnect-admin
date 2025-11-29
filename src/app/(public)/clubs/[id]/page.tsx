@@ -1,6 +1,6 @@
 import { createClientRSC } from "@/lib/supabase/rsc";
-import StarRatingDisplay from "../../components/StarRatingDisplay";
 import ReviewModal from "../../components/ReviewModal";
+import { StarRatingDisplay } from "../../components/StarRatingDisplay";
 
 export default async function ClubDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClientRSC();
@@ -34,7 +34,7 @@ export default async function ClubDetailPage({ params }: { params: { id: string 
           <p className="text-gray-600">
             {club.city}, {club.state}
           </p>
-          <StarRatingDisplay value={club.average_rating} />
+          <StarRatingDisplay rating={club.average_rating} />
         </div>
       </div>
 
@@ -45,7 +45,7 @@ export default async function ClubDetailPage({ params }: { params: { id: string 
 
         {reviews?.map((review) => (
           <div key={review.id} className="border rounded-xl p-6 bg-white">
-            <StarRatingDisplay value={review.rating} />
+            <StarRatingDisplay rating={review.rating} />
             <p className="text-gray-700 mt-2">{review.comment}</p>
             <p className="text-gray-400 text-xs mt-2">
               {new Date(review.inserted_at).toLocaleDateString()}

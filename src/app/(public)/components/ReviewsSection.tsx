@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { ReviewModal } from "./ReviewModal";
 import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
+import { useMemo, useState } from "react";
+import ReviewModal from "./ReviewModal";
 
 type Review = {
   id: string;

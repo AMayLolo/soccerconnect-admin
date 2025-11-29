@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { createServerClientInstance } from "./supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const ADMIN_DASHBOARD_ROLES = new Set(["site_admin", "club_admin", "staff"]);
 
@@ -8,7 +8,7 @@ const normalize = (value: unknown) =>
   typeof value === "string" && value.trim().length > 0 ? value.trim().toLowerCase() : null
 
 export async function getCurrentUser() {
-  const supabase = await createServerClientInstance();
+  const supabase = await createServerSupabaseClient();
 
   const { data, error } = await supabase.auth.getUser();
   if (error) {

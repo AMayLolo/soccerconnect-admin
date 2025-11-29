@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
-import StarRating from "./StarRating";
+import { useState } from "react";
+import { StarRating } from "./StarRating";
 
 export default function ReviewModal({ clubId }: { clubId: string }) {
   const [open, setOpen] = useState(false);
@@ -39,7 +39,7 @@ export default function ReviewModal({ clubId }: { clubId: string }) {
           >
             <h2 className="text-xl font-semibold">Write a Review</h2>
 
-            <StarRating value={rating} onChange={setRating} />
+            <StarRating rating={rating} onChange={setRating} />
 
             <textarea
               name="comment"

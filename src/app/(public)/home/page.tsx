@@ -1,10 +1,10 @@
-import PublicHeader from "../components/PublicHeader";
-import HeroSection from "../components/HeroSection";
-import ValueProps from "../components/ValueProps";
-import FeaturedClubs from "../components/FeaturedClubs";
-import HowItWorks from "../components/HowItWorks";
-import ReviewHighlights from "../components/ReviewHighlights";
-import PublicFooter from "../components/PublicFooter";
+import FeaturedClubs from "@/app/(public)/components/FeaturedClubs";
+import HeroSection from "@/app/(public)/components/HeroSection";
+import HowItWorks from "@/app/(public)/components/HowItWorks";
+import PublicFooter from "@/app/(public)/components/PublicFooter";
+import PublicHeader from "@/app/(public)/components/PublicHeader";
+import ReviewHighlights from "@/app/(public)/components/ReviewHighlights";
+import ValueProps from "@/app/(public)/components/ValueProps";
 
 export default async function HomePage() {
   return (

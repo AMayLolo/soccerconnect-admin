@@ -1,6 +1,6 @@
-import "@/app/globals.css";
-import PublicHeader from "./components/PublicHeader";
+import "../(admin)/globals.css";
 import PublicFooter from "./components/PublicFooter";
+import PublicHeader from "./components/PublicHeader";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (

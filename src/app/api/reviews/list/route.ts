@@ -1,7 +1,8 @@
 // src/app/api/reviews/list/route.ts
-import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import { env } from "@/env.mjs";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -13,9 +14,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing club_id" }, { status: 400 });
   }
 
+  const cookieStore = await cookies();
+  
   const supabase = createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
   );
 
   let query = supabase

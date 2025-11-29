@@ -1,7 +1,8 @@
 // src/lib/getClubReviews.ts
 
-import { createServerClient } from "@supabase/ssr";
 import { env } from "@/env.mjs";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 export async function getClubReviews({
   clubId,
@@ -12,9 +13,12 @@ export async function getClubReviews({
   limit?: number;
   cursor?: string | null;
 }) {
+  const cookieStore = await cookies();
+  
   const supabase = createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
   );
 
   let query = supabase

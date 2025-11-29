@@ -1,14 +1,14 @@
 // src/app/(public)/reviews/submit/action.ts
 "use server";
 
+import { env } from "@/env.mjs";
+import { moderateReview } from "@/lib/moderateReview";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { env } from "@/env.mjs";
-import { moderateReview } from "@/lib/moderateReview";
 
 export async function submitReview(formData: FormData) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   const supabase = createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,

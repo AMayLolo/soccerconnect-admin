@@ -3,7 +3,7 @@
 import { LEAGUE_PRESETS } from "@/constants/leagues"
 import { ALLOWED_LOGO_MIME_TYPES, LOGO_BUCKET } from "@/constants/storage"
 import parseLeagues from "@/utils/parseLeagues"
-import { getSupabaseClient } from "@/utils/supabase/client"
+import { createSupabaseBrowserClient } from "@/utils/supabase/client"
 import Image from "next/image"
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
@@ -29,7 +29,7 @@ export default function ClubEditPage() {
   const params = useParams()
   const clubId = params?.id as string
 
-  const supabaseClient = useMemo(() => getSupabaseClient(), [])
+  const supabaseClient = useMemo(() => createSupabaseBrowserClient(), [])
 
   const [club, setClub] = useState<any>(null)
   const [loading, setLoading] = useState(true)

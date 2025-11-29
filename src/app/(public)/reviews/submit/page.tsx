@@ -1,15 +1,19 @@
 // src/app/(public)/reviews/submit/page.tsx
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
-import { env } from "@/env.mjs";
-import { submitReview } from "./action";
-import { redirect } from "next/navigation";
 import { StarRatingInput } from "@/components/reviews/StarRatingInput";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { env } from "@/env.mjs";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { submitReview } from "./action";
 
-export default async function SubmitReviewPage({ searchParams }) {
-  const cookieStore = cookies();
+export default async function SubmitReviewPage({ 
+  searchParams 
+}: { 
+  searchParams: { club_id?: string } 
+}) {
+  const cookieStore = await cookies();
 
   const supabase = createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,

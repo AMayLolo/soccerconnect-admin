@@ -1,4 +1,4 @@
-import "../globals.css";
+import "./globals.css";
 
 // Correct imports based on your actual structure
 import AdminHeader from "./components/AdminHeader";

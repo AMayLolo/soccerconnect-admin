@@ -71,7 +71,7 @@ export default async function AdminClubsPage() {
                   return (
                     <tr key={club.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
+                        <Link href={`/protected/clubs/${club.id}`} className="flex items-center gap-3 group">
                           {club.badge_logo_url && (
                             <img
                               src={club.badge_logo_url}
@@ -79,8 +79,8 @@ export default async function AdminClubsPage() {
                               className="w-10 h-10 object-contain"
                             />
                           )}
-                          <span className="font-medium text-gray-900">{club.club_name}</span>
-                        </div>
+                          <span className="font-medium text-gray-900 group-hover:text-[#0d7a9b] transition-colors">{club.club_name}</span>
+                        </Link>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {club.city}, {club.state}

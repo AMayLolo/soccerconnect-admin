@@ -9,10 +9,12 @@ type Club = {
   city: string;
   state: string;
   logo_url?: string | null;
+  badge_logo_url?: string | null;
 };
 
 export default function ClubPicker() {
   const [allClubs, setAllClubs] = useState<Club[] | null>(null);
+  const [recentClubs, setRecentClubs] = useState<Club[] | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -37,6 +39,20 @@ export default function ClubPicker() {
     if (!allClubs) fetchClubs();
   }, [allClubs]);
 
+  useEffect(() => {
+    const fetchRecent = async () => {
+      try {
+        const res = await fetch("/api/clubs/recent");
+        if (!res.ok) return;
+        const data = (await res.json()) as Club[];
+        setRecentClubs(data);
+      } catch (_) {
+        // ignore
+      }
+    };
+    if (recentClubs == null) fetchRecent();
+  }, [recentClubs]);
+
   const results = useMemo(() => {
     if (!allClubs) return [] as Club[];
     const q = query.trim().toLowerCase();
@@ -58,6 +74,37 @@ export default function ClubPicker() {
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d7a9b] focus:border-transparent"
         />
       </div>
+
+      {(!query.trim() && recentClubs && recentClubs.length > 0) && (
+        <div className="space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">Recently reviewed</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {recentClubs.slice(0, 8).map((club) => (
+              <button
+                key={club.id}
+                onClick={() => router.push(`/reviews/submit?club_id=${club.id}`)}
+                className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-3"
+              
+              >
+                <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center">
+                  {(club.badge_logo_url || club.logo_url) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={(club.badge_logo_url || club.logo_url) as string} alt="" className="w-6 h-6 object-contain" />
+                  ) : (
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7l9-4 9 4-9 4-9-4zm0 0v10l9 4 9-4V7" />
+                    </svg>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-[#1c3f60] truncate">{club.club_name}</div>
+                  <div className="text-xs text-gray-500">{club.city}, {club.state}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="border border-gray-200 rounded-lg divide-y max-h-80 overflow-auto">
         {loading && (

@@ -5,7 +5,8 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "scrape:clubs": "ts-node index.ts"
+    "scrape:clubs": "ts-node index.ts",
+    "seed:sample": "ts-node seedSampleData.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.76.1",

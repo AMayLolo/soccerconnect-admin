@@ -89,7 +89,7 @@ export function ReviewsSection({
 
           <Select value={sort} onValueChange={setSort}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Newest" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="newest">Newest</SelectItem>

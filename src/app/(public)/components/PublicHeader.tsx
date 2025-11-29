@@ -2,30 +2,31 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ThemeToggle } from "@/components/theme-toggle";
 
-export function PublicHeader() {
+export default function PublicHeader() {
   return (
-    <header className="w-full border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+    <header className="w-full border-b bg-white">
+      <div className="max-w-6xl mx-auto flex items-center justify-between h-16 px-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <Image
             src="/logos/soccerconnect_logo.svg"
+            width={34}
+            height={34}
             alt="SoccerConnect"
-            width={40}
-            height={40}
           />
-          <span className="text-xl font-semibold">SoccerConnect</span>
+          <span className="font-semibold text-lg tracking-tight">
+            SoccerConnect
+          </span>
         </Link>
 
-        {/* Nav */}
-        <nav className="flex items-center gap-6 text-sm">
-          <Link href="/clubs" className="hover:text-primary">
-            Clubs
-          </Link>
-          <ThemeToggle />
-        </nav>
+        {/* Login */}
+        <Link
+          href="/auth/login"
+          className="px-4 py-1.5 rounded-md border font-medium text-sm hover:bg-gray-50"
+        >
+          Login
+        </Link>
       </div>
     </header>
   );

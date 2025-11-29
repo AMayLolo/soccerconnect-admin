@@ -1,14 +1,16 @@
 import { createClientRSC } from "@/lib/supabase/rsc";
 
-export default async function AdminClubDetail({ params }: { params: { id: string } }) {
+export default async function AdminClubDetail({ params }: { params: Promise<{ id: string }> }) {
   const supabase = createClientRSC();
-  const clubId = params.id;
+  const { id: clubId } = await params;
 
-  const { data: club } = await supabase
+  const { data: club, error } = await supabase
     .from("clubs")
     .select("*")
     .eq("id", clubId)
     .single();
+
+  console.log("Club query:", { clubId, club, error });
 
   // Get review count
   const { count: reviewCount } = await supabase

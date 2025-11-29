@@ -37,6 +37,15 @@ export default function PublicHeader() {
             Browse Clubs
           </Link>
           <Link 
+            href="/about" 
+            className={pathname === "/about" 
+              ? "text-[#0d7a9b] font-semibold" 
+              : "text-gray-600 hover:text-[#0d7a9b] transition-colors"
+            }
+          >
+            About
+          </Link>
+          <Link 
             href="/reviews/submit" 
             className={pathname?.startsWith("/reviews") 
               ? "text-[#0d7a9b] font-semibold" 

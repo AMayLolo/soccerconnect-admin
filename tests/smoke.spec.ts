@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 // Public home should render hero sections (we look for a known heading component text).
 test('home page renders', async ({ page }) => {

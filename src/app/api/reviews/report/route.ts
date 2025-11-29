@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { env } from "@/env.mjs";
-import { rateLimit, getClientIp } from "@/lib/rateLimit";
+import { getClientIp, rateLimit } from "@/lib/rateLimit";
+import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {

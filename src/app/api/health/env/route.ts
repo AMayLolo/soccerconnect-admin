@@ -1,5 +1,5 @@
+import { ADMIN_APP_URL, CANONICAL_SITE_URL, env } from "@/env.mjs";
 import { NextResponse } from "next/server";
-import { env, CANONICAL_SITE_URL, ADMIN_APP_URL } from "@/env.mjs";
 
 // Redact sensitive keys
 function redact(value?: string) {

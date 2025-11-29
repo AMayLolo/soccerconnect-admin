@@ -18,7 +18,7 @@ export default function PublicHeader() {
             alt="SoccerConnect" 
             width={56} 
             height={56}
-            className="transition-transform group-hover:scale-105 w-auto h-auto"
+            className="transition-transform group-hover:scale-105 w-14 h-14"
           />
           <span className="font-bold text-xl text-[#1c3f60]">
             SoccerConnect

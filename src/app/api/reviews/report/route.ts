@@ -24,9 +24,16 @@ export async function POST(req: Request) {
 
     const { review_id, reason } = await req.json();
 
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json(
+        { error: "Service role credentials not configured" },
+        { status: 500 }
+      );
+    }
+
     const service = createClient(
-      env.SUPABASE_URL,
-      env.SUPABASE_SERVICE_ROLE_KEY
+      env.SUPABASE_URL!,
+      env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
     await service

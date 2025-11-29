@@ -42,9 +42,16 @@ export async function GET(request: Request) {
     }
 
     // 4. Service role client for reading stats safely
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json(
+        { error: "Service role credentials not configured" },
+        { status: 500 }
+      );
+    }
+
     const serviceClient = createClient(
-      env.SUPABASE_URL,
-      env.SUPABASE_SERVICE_ROLE_KEY
+      env.SUPABASE_URL!,
+      env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
     // ---- Stats Queries ----

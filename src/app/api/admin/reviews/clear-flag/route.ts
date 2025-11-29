@@ -30,8 +30,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { id } = await req.json();
+    // Guard: service role credentials must be configured for this administrative action
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json(
+        { error: "Service role credentials not configured" },
+        { status: 500 }
+      );
+    }
 
-    const service = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const service = createClient(env.SUPABASE_URL!, env.SUPABASE_SERVICE_ROLE_KEY!);
 
     await service.from("reviews").update({ flagged: false }).eq("id", id);
 

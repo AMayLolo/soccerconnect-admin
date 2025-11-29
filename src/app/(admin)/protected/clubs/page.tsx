@@ -1,5 +1,5 @@
 import { createClientRSC } from "@/lib/supabase/rsc";
-import { isClubProfileComplete, getProfileCompletionPercentage } from "@/utils/clubProfileCompletion";
+import { getProfileCompletionPercentage, isClubProfileComplete } from "@/utils/clubProfileCompletion";
 import Link from "next/link";
 
 export default async function AdminClubsPage() {
@@ -8,6 +8,8 @@ export default async function AdminClubsPage() {
   const { data, error } = await supabase
     .from("clubs")
     .select("*");
+
+  console.log("Clubs data sample:", data?.[0]); // Debug: check what fields exist
 
   const completeClubs = data?.filter(club => isClubProfileComplete(club)) ?? [];
   const incompleteClubs = data?.filter(club => !isClubProfileComplete(club)) ?? [];
@@ -67,11 +69,14 @@ export default async function AdminClubsPage() {
                 {data.map((club) => {
                   const isComplete = isClubProfileComplete(club);
                   const completionPercent = getProfileCompletionPercentage(club);
+                  const detailUrl = `/protected/clubs/${club.id}`;
+                  
+                  console.log("Club row:", { id: club.id, name: club.club_name, url: detailUrl });
                   
                   return (
                     <tr key={club.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
-                        <Link href={`/protected/clubs/${club.id}`} className="flex items-center gap-3 group">
+                        <Link href={detailUrl} className="flex items-center gap-3 group">
                           {club.badge_logo_url && (
                             <img
                               src={club.badge_logo_url}
@@ -98,7 +103,7 @@ export default async function AdminClubsPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <Link
-                          href={`/protected/clubs/${club.id}`}
+                          href={detailUrl}
                           className="text-[#0d7a9b] hover:text-[#0a5f7a] font-medium text-sm"
                         >
                           View Details →

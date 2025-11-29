@@ -1,14 +1,12 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-import { LEAGUE_PRESETS } from "@/constants/leagues";
 import {
-  ALLOWED_LOGO_MIME_TYPES,
-  LOGO_BUCKET,
+    ALLOWED_LOGO_MIME_TYPES,
+    LOGO_BUCKET,
 } from "@/constants/storage";
 import parseLeagues from "@/utils/parseLeagues";
 

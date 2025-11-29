@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { signupAction } from "./action";
 
-export default function SignupPage() {
+function SignupForm() {
   const params = useSearchParams();
   const redirect = params.get("redirect") || "";
   return (
@@ -37,5 +38,13 @@ export default function SignupPage() {
         </button>
       </form>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="max-w-md mx-auto py-20">Loading...</div>}>
+      <SignupForm />
+    </Suspense>
   );
 }

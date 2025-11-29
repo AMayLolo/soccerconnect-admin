@@ -1,10 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useFormState } from "react-dom";
 import { loginAction } from "./action";
 
-export default function LoginPage() {
+function LoginForm() {
   const [state, formAction] = useFormState(loginAction, { error: "" });
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "";
@@ -25,5 +26,13 @@ export default function LoginPage() {
         </button>
       </form>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="max-w-md mx-auto mt-20">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

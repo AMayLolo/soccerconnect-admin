@@ -1,12 +1,9 @@
 // src/app/(public)/reviews/submit/page.tsx
-import { StarRatingInput } from "@/components/reviews/StarRatingInput";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { env } from "@/env.mjs";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { submitReview } from "./action";
+import { ReviewForm } from "./ReviewForm";
 
 export default async function SubmitReviewPage({ 
   searchParams 
@@ -40,35 +37,5 @@ export default async function SubmitReviewPage({
 
   if (!session) redirect("/auth/login");
 
-  return (
-    <div className="space-y-6 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold">Write a Review</h1>
-      <p className="text-muted-foreground text-lg">
-        For <span className="font-semibold">{club?.club_name}</span>
-      </p>
-
-      <form action={submitReview} className="space-y-6">
-        <input type="hidden" name="club_id" value={club_id} />
-
-        <div>
-          <label className="block font-medium mb-1">Rating</label>
-          <StarRatingInput name="rating" />
-        </div>
-
-        <div>
-          <label className="block font-medium mb-1">Comment</label>
-          <Textarea
-            name="comment"
-            rows={5}
-            placeholder="Share your experience…"
-            required
-          />
-        </div>
-
-        <Button type="submit" className="w-full text-lg py-3">
-          Submit Review
-        </Button>
-      </form>
-    </div>
-  );
+  return <ReviewForm clubId={club_id} clubName={club?.club_name || "this club"} />;
 }

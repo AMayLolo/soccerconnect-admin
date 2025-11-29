@@ -20,10 +20,13 @@ export async function submitReview(formData: FormData) {
   const club_id = formData.get("club_id")?.toString();
   const rating = Number(formData.get("rating"));
   const comment = formData.get("comment")?.toString() ?? "";
+  const reviewer_type = formData.get("reviewer_type")?.toString();
 
   if (!club_id) throw new Error("Missing club_id");
   if (!rating || rating < 1 || rating > 5)
     throw new Error("Invalid rating");
+  if (!reviewer_type || !['parent', 'player', 'staff'].includes(reviewer_type))
+    throw new Error("Invalid reviewer type");
 
   // Must be logged in
   const {
@@ -53,6 +56,7 @@ export async function submitReview(formData: FormData) {
       .update({
         rating,
         comment,
+        reviewer_type,
         hidden: moderation.hidden,
         flagged: moderation.flagged,
         report_reason: moderation.reason,
@@ -69,6 +73,7 @@ export async function submitReview(formData: FormData) {
     user_id,
     rating,
     comment,
+    reviewer_type,
     hidden: moderation.hidden,
     flagged: moderation.flagged,
     report_reason: moderation.reason,

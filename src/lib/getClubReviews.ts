@@ -23,7 +23,7 @@ export async function getClubReviews({
 
   let query = supabase
     .from("reviews")
-    .select(`id, rating, comment, hidden, flagged, inserted_at, profiles(full_name)`)
+    .select(`id, rating, comment, reviewer_type, hidden, flagged, inserted_at, profiles(full_name)`)
     .eq("club_id", clubId)
     .order("inserted_at", { ascending: false }) // newest → oldest
     .limit(limit);

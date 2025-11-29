@@ -316,8 +316,8 @@ export default function ClubEditPage() {
         </div>
 
         <div className="flex justify-end gap-3">
-          <button type="button" onClick={() => router.push("/protected/clubs") } className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
-          <button type="submit" disabled={saving} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-60">{saving ? "Saving..." : "Save Changes"}</button>
+          <button type="button" onClick={() => router.push("/protected/clubs") } className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+          <button type="submit" disabled={saving} className="px-4 py-2 bg-[#0d7a9b] hover:bg-[#0a5f7a] text-white rounded-md disabled:opacity-60 transition-colors">{saving ? "Saving..." : "Save Changes"}</button>
         </div>
       </form>
     </div>

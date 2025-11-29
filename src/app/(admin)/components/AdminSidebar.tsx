@@ -28,7 +28,7 @@ export default function AdminSidebar() {
       {/* New Club Button */}
       <Link
         href="/protected/clubs/new"
-        className="mb-6 w-full bg-black text-white text-center py-2 rounded-md hover:bg-gray-900 transition"
+        className="mb-6 w-full bg-[#0d7a9b] text-white text-center py-2 rounded-md hover:bg-[#0a5f7a] transition"
       >
         + New Club
       </Link>
@@ -36,8 +36,10 @@ export default function AdminSidebar() {
       {/* Navigation */}
       <nav className="space-y-1 flex-1">
         {navItems.map((item) => {
-          const active =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+          // Special case for dashboard - only match exact path
+          const active = item.href === "/protected" 
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(item.href + "/");
 
           return (
             <Link
@@ -46,7 +48,7 @@ export default function AdminSidebar() {
               className={cn(
                 "block px-3 py-2 rounded-md text-sm transition",
                 active
-                  ? "bg-gray-900 text-white"
+                  ? "bg-[#0d7a9b] text-white"
                   : "text-gray-700 hover:bg-gray-100"
               )}
             >

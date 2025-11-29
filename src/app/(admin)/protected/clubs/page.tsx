@@ -4,9 +4,11 @@ import Link from "next/link";
 export default async function AdminClubsPage() {
   const supabase = createClientRSC();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("clubs")
     .select("id, club_name, city, state, badge_logo_url, review_count");
+
+  console.log("Clubs data:", data, "Error:", error);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
@@ -15,9 +17,19 @@ export default async function AdminClubsPage() {
         <p className="text-gray-600">View and manage all soccer clubs in the directory</p>
       </div>
 
-      {!data || data.length === 0 ? (
+      {error ? (
+        <div className="text-center py-12 bg-red-50 rounded-lg border border-red-200">
+          <p className="text-red-600">Error loading clubs: {error.message}</p>
+        </div>
+      ) : !data || data.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <p className="text-gray-500">No clubs found</p>
+          <Link 
+            href="/protected/clubs/new"
+            className="mt-4 inline-block px-4 py-2 bg-[#0d7a9b] text-white rounded-md hover:bg-[#0a5f7a] transition-colors"
+          >
+            Add Your First Club
+          </Link>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

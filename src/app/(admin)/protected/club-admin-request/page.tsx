@@ -195,7 +195,7 @@ export default function ClubAdminRequestPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition disabled:opacity-50"
+          className="w-full py-2 bg-[#0d7a9b] text-white rounded-md hover:bg-[#0a5f7a] transition disabled:opacity-50"
         >
           {loading ? "Submitting..." : "Submit Request"}
         </button>

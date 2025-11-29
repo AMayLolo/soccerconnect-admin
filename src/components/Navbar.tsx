@@ -17,6 +17,7 @@ export function Navbar() {
     { name: "Flagged", href: "/protected/flagged" },
     { name: "Approvals", href: "/protected/approvals" },
     { name: "Reviews", href: "/protected/reviews" },
+    { name: "Recommendations", href: "/protected/club-recommendations" },
   ]
 
   const handleLogout = async () => {
@@ -25,7 +26,7 @@ export function Navbar() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <Link href="/protected">

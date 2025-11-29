@@ -4,13 +4,17 @@ export default async function AdminClubDetail({ params }: { params: Promise<{ id
   const supabase = createClientRSC();
   const { id: clubId } = await params;
 
+  console.log("=== CLUB DETAIL PAGE ===");
+  console.log("Received club ID:", clubId);
+  console.log("ID type:", typeof clubId);
+
   const { data: club, error } = await supabase
     .from("clubs")
     .select("*")
     .eq("id", clubId)
     .single();
 
-  console.log("Club query:", { clubId, club, error });
+  console.log("Club query result:", { club, error, clubId });
 
   // Get review count
   const { count: reviewCount } = await supabase
@@ -21,8 +25,10 @@ export default async function AdminClubDetail({ params }: { params: Promise<{ id
   if (!club) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">Club not found</p>
+        <div className="text-center py-12 bg-red-50 rounded-lg border border-red-200">
+          <p className="text-red-600 font-semibold mb-2">Club not found</p>
+          <p className="text-sm text-red-500">ID: {clubId}</p>
+          <p className="text-sm text-red-500">Error: {error?.message || 'No error message'}</p>
         </div>
       </div>
     );

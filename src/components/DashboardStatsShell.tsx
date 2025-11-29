@@ -8,11 +8,15 @@ import LiveStatCard from "./LiveStatCard"
 
 export default function DashboardStatsShell({
   totalClubs,
+  completeClubs,
+  incompleteClubs,
   pendingApprovals,
   flaggedReports,
   activeReviews,
 }: {
   totalClubs: number
+  completeClubs: number
+  incompleteClubs: number
   pendingApprovals: number
   flaggedReports: number
   activeReviews: number
@@ -29,9 +33,23 @@ export default function DashboardStatsShell({
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <LiveStatCard label="Total Clubs" table="clubs" initialCount={totalClubs} href="/protected/clubs" />
+              <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-1">
+                    <p className="text-sm font-medium text-muted-foreground">Club Profiles</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold text-green-600">{completeClubs}</span>
+                      <span className="text-sm text-muted-foreground">complete</span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold text-orange-600">{incompleteClubs}</span>
+                      <span className="text-sm text-muted-foreground">incomplete</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <LiveStatCard label="Pending Approvals" table="profiles" initialCount={pendingApprovals} filters={[{ column: "status", op: "eq", value: "pending_review" }]} href="/protected/approvals" />
               <LiveStatCard label="Flagged Reports" table="reports" initialCount={flaggedReports} href="/protected/flagged" />
-              <LiveStatCard label="Active Reviews" table="reviews" initialCount={activeReviews} filters={[{ column: "is_removed", op: "eq", value: false }]} href="/protected/reviews" />
             </div>
           </div>
         </div>

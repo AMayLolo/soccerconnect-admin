@@ -6,6 +6,7 @@ import DashboardStatsShell from "@/components/DashboardStatsShell"
 import StatsProvider from "@/components/StatsProvider"
 import { Badge } from "@/components/ui/badge"
 import normalizeStatsKey from "@/utils/normalizeStatsKey"
+import { isClubProfileComplete } from "@/utils/clubProfileCompletion"
 import { createServerClient } from "@supabase/ssr"
 import { ArrowRight } from "lucide-react"
 import { cookies } from "next/headers"
@@ -25,17 +26,28 @@ export default async function DashboardPage() {
   )
 
   // Server-side initial counts
-  const [{ count: clubsCount }, { count: pendingCount }, { count: reportsCount }, { count: reviewsCount }] = await Promise.all([
+  const [
+    { count: clubsCount }, 
+    { count: pendingCount }, 
+    { count: reportsCount }, 
+    { count: reviewsCount },
+    { data: allClubs }
+  ] = await Promise.all([
     supabase.from("clubs").select("id", { head: true, count: "exact" }),
     supabase.from("profiles").select("id", { head: true, count: "exact" }).eq("status", "pending_review"),
     supabase.from("reports").select("id", { head: true, count: "exact" }),
     supabase.from("reviews").select("id", { head: true, count: "exact" }).eq("is_removed", false),
+    supabase.from("clubs").select("*")
   ])
 
   const totalClubs = clubsCount ?? 0
   const pendingApprovals = pendingCount ?? 0
   const flaggedReports = reportsCount ?? 0
   const activeReviews = reviewsCount ?? 0
+
+  // Calculate complete vs incomplete clubs
+  const completeClubs = allClubs?.filter(club => isClubProfileComplete(club)).length ?? 0
+  const incompleteClubs = totalClubs - completeClubs
 
   const initialMap: Record<string, number> = {}
   initialMap[normalizeStatsKey("clubs")] = totalClubs
@@ -48,6 +60,8 @@ export default async function DashboardPage() {
       <StatsProvider initial={initialMap}>
         <DashboardStatsShell
           totalClubs={totalClubs}
+          completeClubs={completeClubs}
+          incompleteClubs={incompleteClubs}
           pendingApprovals={pendingApprovals}
           flaggedReports={flaggedReports}
           activeReviews={activeReviews}

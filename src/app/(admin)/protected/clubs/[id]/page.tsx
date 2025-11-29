@@ -10,6 +10,12 @@ export default async function AdminClubDetail({ params }: { params: { id: string
     .eq("id", clubId)
     .single();
 
+  // Get review count
+  const { count: reviewCount } = await supabase
+    .from("reviews")
+    .select("*", { count: "exact", head: true })
+    .eq("club_id", clubId);
+
   if (!club) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -51,7 +57,7 @@ export default async function AdminClubDetail({ params }: { params: { id: string
           </div>
           <div>
             <label className="text-sm font-medium text-gray-500 uppercase tracking-wider">Reviews</label>
-            <p className="mt-1 text-lg text-gray-900">{club.review_count || 0}</p>
+            <p className="mt-1 text-lg text-gray-900">{reviewCount || 0}</p>
           </div>
         </div>
       </div>

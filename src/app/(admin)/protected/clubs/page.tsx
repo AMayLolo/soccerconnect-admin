@@ -6,9 +6,7 @@ export default async function AdminClubsPage() {
 
   const { data, error } = await supabase
     .from("clubs")
-    .select("id, club_name, city, state, badge_logo_url, review_count");
-
-  console.log("Clubs data:", data, "Error:", error);
+    .select("id, club_name, city, state, badge_logo_url");
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
@@ -50,11 +48,6 @@ export default async function AdminClubsPage() {
               <p className="text-gray-600 text-sm">
                 {club.city}, {club.state}
               </p>
-              {club.review_count > 0 && (
-                <p className="text-gray-500 text-sm mt-2">
-                  {club.review_count} review{club.review_count !== 1 ? 's' : ''}
-                </p>
-              )}
             </Link>
           ))}
         </div>

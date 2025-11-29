@@ -1,96 +1,70 @@
 "use client";
 
 import { useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { supabase } from "@/lib/supabase/client";
+import StarRating from "./StarRating";
 
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-
-import { StarRating } from "./StarRating";
-
-export function ReviewModal({ clubId }: { clubId: string }) {
-  const supabase = createClientComponentClient();
-
+export default function ReviewModal({ clubId }: { clubId: string }) {
   const [open, setOpen] = useState(false);
-  const [reviewerName, setReviewerName] = useState("");
-  const [comment, setComment] = useState("");
   const [rating, setRating] = useState(0);
-  const [loading, setLoading] = useState(false);
 
-  async function submitReview() {
-    if (rating === 0 || comment.trim().length === 0) return;
+  async function submitReview(e: any) {
+    e.preventDefault();
 
-    setLoading(true);
+    const comment = e.target.comment.value;
 
     await supabase.from("reviews").insert({
       club_id: clubId,
-      reviewer_name: reviewerName || "Anonymous",
-      comment,
       rating,
+      comment,
     });
 
-    setLoading(false);
     setOpen(false);
-
-    // Optional: Refresh page
-    window.location.reload();
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="default" className="mt-4">
-          Write a Review
-        </Button>
-      </DialogTrigger>
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="px-4 py-2 bg-black text-white rounded-md"
+      >
+        Write a Review
+      </button>
 
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Write a Review</DialogTitle>
-          <DialogDescription>
-            Share your experience with this club.
-          </DialogDescription>
-        </DialogHeader>
+      {open && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center">
+          <form
+            onSubmit={submitReview}
+            className="bg-white rounded-xl p-6 w-full max-w-md space-y-6"
+          >
+            <h2 className="text-xl font-semibold">Write a Review</h2>
 
-        <div className="space-y-4 py-4">
-          {/* Name */}
-          <Input
-            placeholder="Your name (optional)"
-            value={reviewerName}
-            onChange={(e) => setReviewerName(e.target.value)}
-          />
+            <StarRating value={rating} onChange={setRating} />
 
-          {/* Rating */}
-          <div>
-            <p className="text-sm mb-2">Your Rating</p>
-            <StarRating rating={rating} onChange={setRating} />
-          </div>
+            <textarea
+              name="comment"
+              required
+              className="w-full border rounded-md px-3 py-2 h-32"
+            />
 
-          {/* Comment */}
-          <Textarea
-            placeholder="Write your review..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className="min-h-[120px]"
-          />
+            <div className="flex justify-end gap-4">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="border px-4 py-2 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="bg-black text-white px-4 py-2 rounded-md"
+              >
+                Submit
+              </button>
+            </div>
+          </form>
         </div>
-
-        <DialogFooter>
-          <Button onClick={submitReview} disabled={loading || rating === 0}>
-            {loading ? "Submitting..." : "Submit Review"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      )}
+    </>
   );
 }

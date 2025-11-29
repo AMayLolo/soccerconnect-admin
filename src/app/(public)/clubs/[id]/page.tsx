@@ -1,156 +1,58 @@
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
-import Image from "next/image";
-import { ReviewModal } from "../../components/ReviewModal";
-import { StarRatingDisplay } from "../../components/StarRatingDisplay";
-import { ReviewsSection } from "../../components/ReviewsSection";
+import { createClientRSC } from "@/lib/supabase/rsc";
+import StarRatingDisplay from "../../components/StarRatingDisplay";
+import ReviewModal from "../../components/ReviewModal";
 
-/* -----------------------------------------
-   TYPES
------------------------------------------ */
+export default async function ClubDetailPage({ params }: { params: { id: string } }) {
+  const supabase = createClientRSC();
+  const clubId = params.id;
 
-type Club = {
-  id: string;
-  club_name: string;
-  city: string | null;
-  state: string | null;
-  competition_level: string | null;
-  badge_logo_url: string | null;
-  website_url: string | null;
-  tryout_info_url: string | null;
-  about: string | null;
-};
-
-type Review = {
-  id: string;
-  reviewer_name: string | null;
-  rating: number | null;
-  comment: string | null;
-  inserted_at: string;
-};
-
-/* -----------------------------------------
-   MAIN PAGE (SERVER COMPONENT)
------------------------------------------ */
-
-export default async function ClubDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const cookieStore = cookies();
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: { get: (name) => cookieStore.get(name)?.value },
-    }
-  );
-
-  /* FETCH CLUB */
-  const { data: clubData } = await supabase
+  const { data: club } = await supabase
     .from("clubs")
-    .select(
-      "id, club_name, city, state, competition_level, badge_logo_url, website_url, tryout_info_url, about"
-    )
-    .eq("id", params.id)
+    .select("*")
+    .eq("id", clubId)
     .single();
 
-  const club = clubData as Club | null;
-
-  if (!club) {
-    return (
-      <div className="py-20 text-center">
-        <h1 className="text-2xl font-semibold">Club not found</h1>
-      </div>
-    );
-  }
-
-  /* FETCH REVIEWS */
-  const { data: reviewsRaw } = await supabase
+  const { data: reviews } = await supabase
     .from("reviews")
-    .select("id, reviewer_name, rating, comment, inserted_at")
-    .eq("club_id", params.id)
-    .eq("is_removed", false);
+    .select("*")
+    .eq("club_id", clubId)
+    .order("inserted_at", { ascending: false });
 
-  const reviews: Review[] = (reviewsRaw || []) as Review[];
-
-  /* AVERAGE RATING */
-  const averageRating =
-    reviews.length > 0
-      ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
-      : 0;
+  if (!club) return <div className="p-20">Club not found</div>;
 
   return (
-    <div className="space-y-12">
-      {/* CLUB HEADER */}
-      <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-        <Image
+    <div className="max-w-5xl mx-auto px-4 py-16 space-y-12">
+
+      <div className="flex items-center gap-6">
+        <img
           src={club.badge_logo_url || "/placeholder.png"}
-          width={110}
-          height={110}
-          alt={club.club_name}
-          className="rounded-md object-cover shadow"
+          className="w-24 h-24 object-contain"
         />
-
-        <div className="space-y-3">
-          <h1 className="text-4xl font-bold tracking-tight">
-            {club.club_name}
-          </h1>
-
-          <p className="text-muted-foreground text-lg">
+        
+        <div>
+          <h1 className="text-4xl font-bold">{club.club_name}</h1>
+          <p className="text-gray-600">
             {club.city}, {club.state}
           </p>
-
-          {/* ⭐ AVERAGE RATING */}
-          <div className="flex items-center gap-3">
-            <StarRatingDisplay rating={averageRating} />
-            {reviews.length > 0 ? (
-              <span className="text-sm text-muted-foreground">
-                {averageRating.toFixed(1)} ({reviews.length} reviews)
-              </span>
-            ) : (
-              <span className="text-sm text-muted-foreground">
-                No reviews yet
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-4 pt-2">
-            {club.website_url && (
-              <a
-                href={club.website_url}
-                target="_blank"
-                className="text-sm underline text-primary"
-              >
-                Visit Website
-              </a>
-            )}
-
-            {club.tryout_info_url && (
-              <a
-                href={club.tryout_info_url}
-                target="_blank"
-                className="text-sm underline text-primary"
-              >
-                Tryout Information
-              </a>
-            )}
-          </div>
+          <StarRatingDisplay value={club.average_rating} />
         </div>
       </div>
 
-      {/* ABOUT */}
-      <div>
-        <h2 className="text-xl font-semibold mb-3">About</h2>
-        <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-          {club.about || "No information available."}
-        </p>
-      </div>
+      <ReviewModal clubId={club.id} />
 
-      {/* REVIEWS (Client Component) */}
-      <ReviewsSection initialReviews={reviews} clubId={club.id} />
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold">Recent Reviews</h2>
+
+        {reviews?.map((review) => (
+          <div key={review.id} className="border rounded-xl p-6 bg-white">
+            <StarRatingDisplay value={review.rating} />
+            <p className="text-gray-700 mt-2">{review.comment}</p>
+            <p className="text-gray-400 text-xs mt-2">
+              {new Date(review.inserted_at).toLocaleDateString()}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

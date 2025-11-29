@@ -1,25 +1,40 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createMiddlewareClient } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
+  let res = NextResponse.next();
 
-  const supabase = createMiddlewareClient({ req, res });
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name) {
+          return req.cookies.get(name)?.value;
+        },
+        set(name, value, options) {
+          res.cookies.set(name, value, options);
+        },
+        remove(name, options) {
+          res.cookies.set(name, "", { ...options, maxAge: 0 });
+        },
+      },
+    }
+  );
 
-  // Only protect /protected routes
-  const isProtected = req.nextUrl.pathname.startsWith("/protected");
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (isProtected && !user) {
-    return NextResponse.redirect(new URL("/auth/login", req.url));
+  if (
+    req.nextUrl.pathname.startsWith("/admin") && 
+    !user
+  ) {
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
   return res;
 }
 
 export const config = {
-  matcher: ["/protected/:path*"],
+  matcher: ["/admin/:path*"],
 };

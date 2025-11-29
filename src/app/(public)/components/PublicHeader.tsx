@@ -1,32 +1,41 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 export default function PublicHeader() {
+  const pathname = usePathname();
+
   return (
-    <header className="w-full border-b bg-white">
-      <div className="max-w-6xl mx-auto flex items-center justify-between h-16 px-4">
+    <header className="border-b bg-white/90 backdrop-blur sticky top-0 z-50">
+      <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-16">
+        
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <Image
-            src="/logos/soccerconnect_logo.svg"
-            width={34}
-            height={34}
-            alt="SoccerConnect"
-          />
-          <span className="font-semibold text-lg tracking-tight">
-            SoccerConnect
-          </span>
+        <Link href="/" className="font-semibold text-xl">
+          SoccerConnect
         </Link>
 
-        {/* Login */}
-        <Link
-          href="/auth/login"
-          className="px-4 py-1.5 rounded-md border font-medium text-sm hover:bg-gray-50"
-        >
-          Login
-        </Link>
+        {/* Navigation */}
+        <nav className="hidden md:flex items-center gap-8 text-sm">
+          <Link href="/clubs" className={pathname === "/clubs" ? "text-black font-medium" : "text-gray-600"}>
+            Clubs
+          </Link>
+          <Link href="/reviews/submit" className={pathname?.startsWith("/reviews") ? "text-black font-medium" : "text-gray-600"}>
+            Leave Review
+          </Link>
+        </nav>
+
+        <div className="flex items-center gap-4">
+          <Link href="/auth/login" className="text-gray-600 hover:text-black">
+            Sign In
+          </Link>
+          <Link
+            href="/auth/signup"
+            className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-900"
+          >
+            Get Started
+          </Link>
+        </div>
       </div>
     </header>
   );

@@ -1,33 +1,26 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import FlaggedTableClient from "./FlaggedTableClient";
+import { createClientRSC } from "@/lib/supabase/rsc";
 
-export default async function FlaggedPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => Array.from(cookieStore.getAll()),
-        setAll: () => {},
-      },
-    }
-  );
+export default async function FlaggedReviewsPage() {
+  const supabase = createClientRSC();
 
-  const { data: reports, error } = await supabase
-    .from("reports") // ✅ your table
+  const { data } = await supabase
+    .from("reviews")
     .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("Error loading flagged reports:", error.message);
-  }
+    .eq("is_flagged", true);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Flagged Reports</h1>
-      <FlaggedTableClient reports={reports || []} />
+    <div>
+      <h1 className="text-2xl font-semibold mb-6">Flagged Reviews</h1>
+
+      {data?.map((review) => (
+        <div key={review.id} className="p-6 bg-white border rounded-xl mb-4">
+          <p className="font-semibold">{review.rating}★</p>
+          <p>{review.comment}</p>
+          <p className="text-gray-400 text-sm mt-2">
+            {new Date(review.inserted_at).toLocaleString()}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }

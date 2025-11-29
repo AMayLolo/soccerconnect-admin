@@ -1,7 +1,9 @@
-export function PublicFooter() {
+export default function PublicFooter() {
   return (
-    <footer className="mt-12 border-t py-6 text-center text-sm text-muted-foreground">
-      <p>© {new Date().getFullYear()} SoccerConnect. All rights reserved.</p>
+    <footer className="border-t py-10 mt-20">
+      <div className="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm">
+        <p>© {new Date().getFullYear()} SoccerConnect. All rights reserved.</p>
+      </div>
     </footer>
   );
 }

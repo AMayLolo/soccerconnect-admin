@@ -1,37 +1,28 @@
-import SearchBar from "./SearchBar";
-import Link from "next/link";
-
 export default function HeroSection() {
   return (
-    <section className="w-full bg-gradient-to-b from-gray-50 to-white py-24 text-center">
-      <div className="max-w-4xl mx-auto px-4">
-        <h1 className="text-5xl font-semibold tracking-tight text-gray-900">
-          Find Your Perfect Youth Soccer Club
+    <section className="pt-20 pb-32 bg-gradient-to-b from-white to-gray-50">
+      <div className="max-w-4xl mx-auto px-4 text-center">
+        <h1 className="text-5xl font-bold tracking-tight text-black">
+          Find the Right Youth Soccer Club.
         </h1>
-
-        <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
-          Real reviews. Real families. Real insights.  
-          Discover the right environment for your player.
+        <p className="mt-6 text-lg text-gray-600">
+          Discover real parent reviews, compare clubs, and make informed decisions
+          for your player’s development — all in one place.
         </p>
 
-        <div className="mt-8 max-w-xl mx-auto">
-          <SearchBar />
-        </div>
-
-        <div className="mt-6 flex justify-center gap-4">
-          <Link
+        <div className="mt-8 flex justify-center gap-4">
+          <a 
             href="/clubs"
-            className="px-6 py-3 bg-black text-white rounded-md text-sm font-medium hover:opacity-90"
+            className="px-6 py-3 bg-black text-white rounded-md hover:bg-gray-900"
           >
             Browse Clubs
-          </Link>
-
-          <Link
+          </a>
+          <a 
             href="/auth/signup"
-            className="px-6 py-3 border rounded-md text-sm font-medium hover:bg-gray-50"
+            className="px-6 py-3 border border-gray-300 rounded-md hover:bg-gray-100"
           >
-            Sign Up
-          </Link>
+            Get Started
+          </a>
         </div>
       </div>
     </section>

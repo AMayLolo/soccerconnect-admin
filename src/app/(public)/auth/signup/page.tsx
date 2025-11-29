@@ -1,46 +1,35 @@
-import { signup } from "./action";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { signupAction } from "./action";
 
-export default function PublicSignupPage({ searchParams }) {
-  const redirectTo = searchParams.redirectTo || "/";
-
+export default function SignupPage() {
   return (
-    <div className="max-w-md mx-auto py-20 space-y-8">
-      <h1 className="text-3xl font-bold text-center">Create Account</h1>
+    <div className="max-w-md mx-auto py-20">
+      <h1 className="text-3xl font-semibold mb-6">Create an Account</h1>
 
-      <form action={signup} className="space-y-6">
-        <input type="hidden" name="redirectTo" value={redirectTo} />
-
-        <div className="space-y-2">
-          <label>Full Name</label>
-          <Input name="full_name" required />
+      <form action={signupAction} className="space-y-6">
+        <div>
+          <label className="block text-sm mb-1">Email</label>
+          <input
+            name="email"
+            type="email"
+            required
+            className="w-full border rounded-md px-3 py-2"
+          />
         </div>
 
-        <div className="space-y-2">
-          <label>Email</label>
-          <Input name="email" type="email" required />
+        <div>
+          <label className="block text-sm mb-1">Password</label>
+          <input
+            name="password"
+            type="password"
+            required
+            className="w-full border rounded-md px-3 py-2"
+          />
         </div>
 
-        <div className="space-y-2">
-          <label>Password</label>
-          <Input name="password" type="password" required />
-        </div>
-
-        <Button type="submit" className="w-full py-3 text-lg">
+        <button className="w-full bg-black text-white py-2 rounded-md">
           Sign Up
-        </Button>
+        </button>
       </form>
-
-      <p className="text-center text-muted-foreground">
-        Already have an account?{" "}
-        <a
-          className="text-primary underline"
-          href={`/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`}
-        >
-          Log In
-        </a>
-      </p>
     </div>
   );
 }

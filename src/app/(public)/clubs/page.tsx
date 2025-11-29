@@ -6,12 +6,13 @@ import RecommendClubModal from "../components/RecommendClubModal";
 export default async function ClubsPage({
   searchParams,
 }: {
-  searchParams: { q?: string; state?: string };
+  searchParams: Promise<{ q?: string; state?: string }>;
 }) {
   const supabase = createClientRSC();
-
-  const query = searchParams.q || "";
-  const stateFilter = searchParams.state || "";
+  
+  const params = await searchParams;
+  const query = params.q || "";
+  const stateFilter = params.state || "";
 
   // Get all unique states for the filter
   const { data: allStates } = await supabase
@@ -35,7 +36,11 @@ export default async function ClubsPage({
     clubQuery = clubQuery.eq("state", stateFilter);
   }
 
-  const { data: clubs } = await clubQuery.order("club_name").limit(500);
+    const { data: clubs, error: clubsError } = await clubQuery.order("club_name").limit(500);
+  
+    if (clubsError) {
+      console.error("Error fetching clubs:", clubsError);
+    }
 
   // Group clubs by state if no filter is applied
   const groupedClubs = !stateFilter && !query && clubs
@@ -75,10 +80,16 @@ export default async function ClubsPage({
             <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-gray-500 text-lg mb-2">No clubs found</p>
-            <Link href="/clubs" className="text-[#0d7a9b] hover:underline font-medium">
-              Clear filters and view all
-            </Link>
+            <p className="text-gray-700 text-lg mb-1">No clubs match your filters</p>
+            <p className="text-gray-500 mb-6">Try clearing filters, or recommend a club and we’ll add it.</p>
+            <div className="flex items-center justify-center gap-4">
+              <Link href="/clubs" className="text-[#0d7a9b] hover:underline font-medium">
+                Clear filters and view all
+              </Link>
+              <div className="inline-flex">
+                <RecommendClubModal />
+              </div>
+            </div>
           </div>
         ) : groupedClubs ? (
           // Grouped by state view (default)

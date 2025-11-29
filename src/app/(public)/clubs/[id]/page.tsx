@@ -2,9 +2,9 @@ import { createClientRSC } from "@/lib/supabase/rsc";
 import Link from "next/link";
 import { ReviewsSection } from "../../components/ReviewsSection";
 
-export default async function ClubDetailPage({ params }: { params: { id: string } }) {
+export default async function ClubDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = createClientRSC();
-  const clubId = params.id;
+  const { id: clubId } = await params;
 
   const { data: club } = await supabase
     .from("clubs")

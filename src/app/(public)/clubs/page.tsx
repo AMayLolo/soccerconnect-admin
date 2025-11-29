@@ -1,6 +1,7 @@
 import { createClientRSC } from "@/lib/supabase/rsc";
 import Link from "next/link";
 import ClubsFilter from "../components/ClubsFilter";
+import RecommendClubModal from "../components/RecommendClubModal";
 
 export default async function ClubsPage({
   searchParams,
@@ -48,13 +49,16 @@ export default async function ClubsPage({
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
       {/* Header Section */}
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-[#1c3f60] mb-3">
-          Browse Youth Soccer Clubs
-        </h1>
-        <p className="text-gray-600 text-lg">
-          Find and compare clubs across the United States
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bold text-[#1c3f60] mb-3">
+            Browse Youth Soccer Clubs
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Find and compare clubs across the United States
+          </p>
+        </div>
+        <RecommendClubModal />
       </div>
 
       {/* Filter & Search */}

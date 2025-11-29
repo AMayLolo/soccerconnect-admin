@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function ClubsFilter({
   states,
@@ -15,9 +15,34 @@ export default function ClubsFilter({
   const [query, setQuery] = useState(currentQuery);
   const [selectedState, setSelectedState] = useState(currentState);
   const router = useRouter();
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Live search with debouncing
+  useEffect(() => {
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Set new timer for live search
+    debounceTimerRef.current = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (query.trim()) params.set("q", query.trim());
+      if (selectedState) params.set("state", selectedState);
+      router.push(`/clubs${params.toString() ? `?${params.toString()}` : ""}`);
+    }, 300); // 300ms delay
+
+    // Cleanup on unmount
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [query, selectedState, router]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    // Immediate search on form submit
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
     if (selectedState) params.set("state", selectedState);
@@ -26,10 +51,6 @@ export default function ClubsFilter({
 
   const handleStateChange = (state: string) => {
     setSelectedState(state);
-    const params = new URLSearchParams();
-    if (query.trim()) params.set("q", query.trim());
-    if (state) params.set("state", state);
-    router.push(`/clubs${params.toString() ? `?${params.toString()}` : ""}`);
   };
 
   const clearFilters = () => {

@@ -1,0 +1,39 @@
+import { createClientRSC } from "@/lib/supabase/rsc";
+import { getCurrentUser } from "@/utils/auth";
+import { redirect } from "next/navigation";
+import RecommendationsTableClient from "./RecommendationsTableClient";
+
+export default async function ClubRecommendationsPage() {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    redirect("/login?redirect=/protected/club-recommendations");
+  }
+
+  const supabase = createClientRSC();
+
+  // Fetch all pending recommendations
+  const { data: recommendations, error } = await supabase
+    .from("club_recommendations")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching recommendations:", error);
+  }
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Club Recommendations
+        </h1>
+        <p className="text-gray-600">
+          Review and manage club recommendations from the community
+        </p>
+      </div>
+
+      <RecommendationsTableClient recommendations={recommendations || []} />
+    </div>
+  );
+}

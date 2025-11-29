@@ -1,6 +1,7 @@
 import { createClientRSC } from "@/lib/supabase/rsc";
 import Link from "next/link";
 import { ReviewsSection } from "../../components/ReviewsSection";
+import AuthRequiredLink from "../../components/AuthRequiredLink";
 
 export default async function ClubDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = createClientRSC();
@@ -154,7 +155,7 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
                   </a>
                 )}
 
-                <Link
+                <AuthRequiredLink
                   href={`/reviews/submit?club_id=${club.id}`}
                   className="px-6 py-2.5 bg-[#0d7a9b] text-white rounded-lg hover:bg-[#0a5f7a] transition-colors font-medium shadow-lg flex items-center gap-2"
                 >
@@ -162,7 +163,7 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
                   Write a Review
-                </Link>
+                </AuthRequiredLink>
               </div>
             </div>
           </div>
@@ -232,7 +233,7 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
                 {memberAvg === null && staffAvg === null && (
                   <div className="md:col-span-2 text-center py-8">
                     <p className="text-gray-500 mb-4">No ratings yet for this club</p>
-                    <Link
+                    <AuthRequiredLink
                       href={`/reviews/submit?club_id=${club.id}`}
                       className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0d7a9b] text-white rounded-lg hover:bg-[#0a5f7a] transition-colors font-medium"
                     >
@@ -240,7 +241,7 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                       </svg>
                       Be the First to Review
-                    </Link>
+                    </AuthRequiredLink>
                   </div>
                 )}
               </div>
@@ -357,12 +358,12 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
               <p className="text-white/90 text-sm mb-4">
                 Help other families make informed decisions by sharing your experience with {club.club_name}.
               </p>
-              <Link
+              <AuthRequiredLink
                 href={`/reviews/submit?club_id=${club.id}`}
                 className="block w-full text-center px-6 py-3 bg-white text-[#1c3f60] rounded-lg hover:bg-gray-100 transition-colors font-semibold"
               >
                 Write a Review
-              </Link>
+              </AuthRequiredLink>
             </div>
           </div>
         </div>

@@ -1,3 +1,5 @@
+import AuthRequiredLink from "../components/AuthRequiredLink";
+
 export default function AboutPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-16">
@@ -155,12 +157,12 @@ export default function AboutPage() {
         <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
           Help other families by sharing your club experience. Your insights make a difference in helping players find their perfect fit.
         </p>
-        <a
+        <AuthRequiredLink
           href="/reviews/submit"
           className="inline-block px-8 py-3 bg-[#0d7a9b] text-white rounded-lg hover:bg-[#0a5f7a] transition-colors font-medium shadow-md"
         >
           Write a Review
-        </a>
+        </AuthRequiredLink>
       </section>
     </div>
   );

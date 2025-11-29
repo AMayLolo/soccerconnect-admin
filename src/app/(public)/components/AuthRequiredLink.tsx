@@ -2,7 +2,9 @@
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 
 export default function AuthRequiredLink({
   href,
@@ -14,20 +16,16 @@ export default function AuthRequiredLink({
   children: React.ReactNode;
 }) {
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const router = useRouter();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createSupabaseBrowserClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      setIsAuthenticated(!!user);
-    };
-    checkAuth();
-  }, []);
-
-  const handleClick = (e: React.MouseEvent) => {
-    if (isAuthenticated === false) {
-      e.preventDefault();
+  const handleClick = async (e: React.MouseEvent) => {
+    // Always prevent default first so we can decide where to go based on fresh auth state
+    e.preventDefault();
+    const supabase = createSupabaseBrowserClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      router.push(href);
+    } else {
       setShowAuthModal(true);
     }
   };
@@ -38,9 +36,9 @@ export default function AuthRequiredLink({
         {children}
       </Link>
 
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowAuthModal(false)}>
-          <div className="bg-white rounded-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+      {showAuthModal && createPortal(
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-100 p-4" onClick={() => setShowAuthModal(false)}>
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-[#1c3f60] mb-2">Registration Required</h2>
               <p className="text-gray-600">
@@ -70,7 +68,8 @@ export default function AuthRequiredLink({
               Cancel
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

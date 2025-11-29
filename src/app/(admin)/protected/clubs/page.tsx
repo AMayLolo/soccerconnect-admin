@@ -44,44 +44,72 @@ export default async function AdminClubsPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {data.map((club) => {
-            const isComplete = isClubProfileComplete(club);
-            const completionPercent = getProfileCompletionPercentage(club);
-            
-            return (
-              <Link
-                key={club.id}
-                href={`/protected/clubs/${club.id}`}
-                className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow relative"
-              >
-                {/* Completion Badge */}
-                <div className="absolute top-4 right-4">
-                  {isComplete ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-300">
-                      ✓ Complete
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-300">
-                      {completionPercent}%
-                    </span>
-                  )}
-                </div>
-
-                {club.badge_logo_url && (
-                  <img
-                    src={club.badge_logo_url}
-                    alt={`${club.club_name} logo`}
-                    className="w-16 h-16 mb-4 object-contain"
-                  />
-                )}
-                <h2 className="text-lg font-semibold text-gray-900 mb-2">{club.club_name}</h2>
-                <p className="text-gray-600 text-sm">
-                  {club.city}, {club.state}
-                </p>
-              </Link>
-            );
-          })}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Club Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Location
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {data.map((club) => {
+                  const isComplete = isClubProfileComplete(club);
+                  const completionPercent = getProfileCompletionPercentage(club);
+                  
+                  return (
+                    <tr key={club.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {club.badge_logo_url && (
+                            <img
+                              src={club.badge_logo_url}
+                              alt={`${club.club_name} logo`}
+                              className="w-10 h-10 object-contain"
+                            />
+                          )}
+                          <span className="font-medium text-gray-900">{club.club_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {club.city}, {club.state}
+                      </td>
+                      <td className="px-6 py-4">
+                        {isComplete ? (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-300">
+                            ✓ Complete
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-300">
+                            {completionPercent}% Complete
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <Link
+                          href={`/protected/clubs/${club.id}`}
+                          className="text-[#0d7a9b] hover:text-[#0a5f7a] font-medium text-sm"
+                        >
+                          View Details →
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

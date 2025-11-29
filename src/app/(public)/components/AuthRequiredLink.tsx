@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function AuthRequiredLink({
   href,

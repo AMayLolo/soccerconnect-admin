@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import AuthRequiredLink from "./AuthRequiredLink";
 
 export default function PublicHeader() {
   const pathname = usePathname();
@@ -45,7 +46,7 @@ export default function PublicHeader() {
           >
             About
           </Link>
-          <Link 
+          <AuthRequiredLink 
             href="/reviews/submit" 
             className={pathname?.startsWith("/reviews") 
               ? "text-[#0d7a9b] font-semibold" 
@@ -53,7 +54,7 @@ export default function PublicHeader() {
             }
           >
             Leave Review
-          </Link>
+          </AuthRequiredLink>
         </nav>
 
         <div className="flex items-center gap-4">

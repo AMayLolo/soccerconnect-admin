@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 
-export function middleware(req) {
-  const url = req.nextUrl;
-  const hostname = req.headers.get("host") || "";
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next();
 
-  if (hostname === "admin.soccerconnectusa.com") {
-    url.pathname = `/admin${url.pathname}`;
-    return NextResponse.rewrite(url);
+  const supabase = createMiddlewareClient({ req, res });
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Only protect URLs that start with /protected
+  const isProtectedRoute = req.nextUrl.pathname.startsWith("/protected");
+
+  if (isProtectedRoute && !user) {
+    return NextResponse.redirect(new URL("/auth/login", req.url));
   }
 
-  if (hostname === "app.soccerconnectusa.com") {
-    url.pathname = `/app${url.pathname}`;
-    return NextResponse.rewrite(url);
-  }
-
-  // Default domain → marketing
-  url.pathname = `/marketing${url.pathname}`;
-  return NextResponse.rewrite(url);
+  return res;
 }
 
 export const config = {
-  matcher: ["/((?!_next|api|.*\\..*).*)"],
+  matcher: ["/protected/:path*"],
 };

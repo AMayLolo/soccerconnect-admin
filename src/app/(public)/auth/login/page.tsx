@@ -1,41 +1,36 @@
-import { login } from "./action";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { loginAction } from "./action";
 
-export default function PublicLoginPage({ searchParams }) {
-  const redirectTo = searchParams.redirectTo || "/";
-
+export default function LoginPage() {
   return (
-    <div className="max-w-md mx-auto py-20 space-y-8">
-      <h1 className="text-3xl font-bold text-center">Log In</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <h1 className="text-3xl font-bold mb-6">Login</h1>
 
-      <form action={login} className="space-y-6">
-        <input type="hidden" name="redirectTo" value={redirectTo} />
+      <form action={loginAction} className="space-y-4 w-full max-w-sm">
 
-        <div className="space-y-2">
-          <label>Email</label>
-          <Input name="email" type="email" required />
-        </div>
+        <input
+          name="email"
+          type="email"
+          placeholder="Email"
+          required
+          className="border w-full p-2 rounded"
+        />
 
-        <div className="space-y-2">
-          <label>Password</label>
-          <Input name="password" type="password" required />
-        </div>
+        <input
+          name="password"
+          type="password"
+          placeholder="Password"
+          required
+          className="border w-full p-2 rounded"
+        />
 
-        <Button type="submit" className="w-full py-3 text-lg">
-          Log In
-        </Button>
-      </form>
-
-      <p className="text-center text-muted-foreground">
-        Don't have an account?{" "}
-        <a
-          className="text-primary underline"
-          href={`/auth/signup?redirectTo=${encodeURIComponent(redirectTo)}`}
+        <button
+          type="submit"
+          className="bg-primary text-white px-4 py-2 rounded w-full"
         >
-          Sign Up
-        </a>
-      </p>
+          Login
+        </button>
+
+      </form>
     </div>
   );
 }

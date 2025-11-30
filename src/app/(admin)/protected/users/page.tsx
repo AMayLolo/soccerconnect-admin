@@ -26,10 +26,9 @@ export default async function UserManagementPage() {
       suspended_at,
       ban_reason,
       suspension_reason,
-      inserted_at,
       updated_at
     `)
-    .order("inserted_at", { ascending: false });
+    .order("updated_at", { ascending: false, nullsFirst: false });
 
   if (profilesError) {
     console.error("Error fetching profiles:", profilesError);

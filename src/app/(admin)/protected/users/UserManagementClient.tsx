@@ -12,7 +12,6 @@ type User = {
   status: string | null;
   is_banned?: boolean;
   is_suspended?: boolean;
-  inserted_at: string;
   updated_at: string | null;
   reviewCount: number;
   discussionCount: number;
@@ -61,7 +60,9 @@ export default function UserManagementClient({
       if (sortBy === "name") {
         return (a.full_name || "").localeCompare(b.full_name || "");
       } else if (sortBy === "recent") {
-        return new Date(b.inserted_at).getTime() - new Date(a.inserted_at).getTime();
+        const aDate = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+        const bDate = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+        return bDate - aDate;
       } else if (sortBy === "reviews") {
         return b.reviewCount - a.reviewCount;
       } else if (sortBy === "discussions") {
@@ -325,7 +326,7 @@ export default function UserManagementClient({
 
                   {/* Joined Date */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(user.inserted_at).toLocaleDateString()}
+                    {user.updated_at ? new Date(user.updated_at).toLocaleDateString() : 'N/A'}
                   </td>
 
                   {/* Actions */}

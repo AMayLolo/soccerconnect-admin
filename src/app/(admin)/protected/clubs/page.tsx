@@ -87,13 +87,19 @@ export default async function AdminClubsPage() {
                     <tr key={club.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <Link href={detailUrl} className="flex items-center gap-3 group">
-                          {club.badge_logo_url && (
-                            <img
-                              src={club.badge_logo_url}
-                              alt={`${club.club_name} logo`}
-                              className="w-10 h-10 object-contain"
-                            />
-                          )}
+                          <div className="w-10 h-10 shrink-0 flex items-center justify-center">
+                            {club.badge_logo_url ? (
+                              <img
+                                src={club.badge_logo_url}
+                                alt={`${club.club_name} logo`}
+                                className="w-10 h-10 object-contain"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs font-medium">
+                                {club.club_name.substring(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
                           <div>
                             <span className="font-medium text-gray-900 group-hover:text-[#0d7a9b] transition-colors block">{club.club_name}</span>
                             {!isComplete && missingFields.length > 0 && (

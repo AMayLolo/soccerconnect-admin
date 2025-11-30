@@ -26,17 +26,22 @@ export default async function DashboardPage() {
     }
   )
 
-  const adminSupabase = getSupabaseServerAdmin()
+  // Admin client may be unavailable in some environments (missing service key)
+  let adminSupabase: ReturnType<typeof getSupabaseServerAdmin> | null = null
+  try {
+    adminSupabase = getSupabaseServerAdmin()
+  } catch (e) {
+    console.warn("Admin Supabase unavailable — recent activity will be empty.", e)
+    adminSupabase = null
+  }
 
   // Server-side initial counts
   const [
-    { count: clubsCount }, 
-    { count: pendingCount }, 
-    { count: reportsCount }, 
+    { count: clubsCount },
+    { count: pendingCount },
+    { count: reportsCount },
     { count: reviewsCount },
     { data: allClubs },
-    { data: recentReviews },
-    { data: recentDiscussions },
     { data: recentClubs }
   ] = await Promise.all([
     supabase.from("clubs").select("id", { head: true, count: "exact" }),
@@ -44,24 +49,43 @@ export default async function DashboardPage() {
     supabase.from("reports").select("id", { head: true, count: "exact" }),
     supabase.from("reviews").select("id", { head: true, count: "exact" }).eq("is_removed", false),
     supabase.from("clubs").select("*"),
-    // Recent reviews (last 10)
-    adminSupabase.from("reviews").select(`
-      id,
-      rating,
-      inserted_at,
-      club_id,
-      clubs:club_id (club_name)
-    `).order("inserted_at", { ascending: false }).limit(10),
-    // Recent discussions (last 10)
-    adminSupabase.from("discussions").select(`
-      id,
-      inserted_at,
-      club_id,
-      clubs:club_id (club_name)
-    `).order("inserted_at", { ascending: false }).limit(10),
-    // Recently updated clubs (last 10)
     supabase.from("clubs").select("id, club_name, updated_at").order("updated_at", { ascending: false }).limit(10)
   ])
+
+  // Optional admin-only recent activity
+  let recentReviews: any[] = []
+  let recentDiscussions: any[] = []
+  if (adminSupabase) {
+    try {
+      const [reviewsRes, discussionsRes] = await Promise.all([
+        adminSupabase
+          .from("reviews")
+          .select(`
+            id,
+            rating,
+            inserted_at,
+            club_id,
+            clubs:club_id (club_name)
+          `)
+          .order("inserted_at", { ascending: false })
+          .limit(10),
+        adminSupabase
+          .from("discussions")
+          .select(`
+            id,
+            inserted_at,
+            club_id,
+            clubs:club_id (club_name)
+          `)
+          .order("inserted_at", { ascending: false })
+          .limit(10)
+      ])
+      recentReviews = reviewsRes.data ?? []
+      recentDiscussions = discussionsRes.data ?? []
+    } catch (e) {
+      console.warn("Admin queries failed — continuing without recent activity.", e)
+    }
+  }
 
   const totalClubs = clubsCount ?? 0
   const pendingApprovals = pendingCount ?? 0
@@ -292,7 +316,7 @@ function DashboardCard({
         </div>
       </div>
 
-      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="absolute inset-0 -z-10 bg-linear-to-br from-primary/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
     </Link>
   )
 }

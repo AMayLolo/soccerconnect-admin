@@ -40,14 +40,20 @@ export default async function AdminDiscussionsPage() {
     );
   }
 
+  // Transform the data to match expected structure (clubs is returned as array from Supabase)
+  const transformedDiscussions = discussions?.map(d => ({
+    ...d,
+    clubs: Array.isArray(d.clubs) && d.clubs.length > 0 ? d.clubs[0] : null
+  })) || [];
+
   // Calculate stats
-  const totalDiscussions = discussions?.length || 0;
+  const totalDiscussions = transformedDiscussions.length;
   const flaggedDiscussions = 0; // Flagging not available in current schema
   const removedDiscussions = 0; // Removal not available in current schema
 
   return (
     <DiscussionsModerationClient 
-      initialDiscussions={discussions || []}
+      initialDiscussions={transformedDiscussions}
       stats={{
         total: totalDiscussions,
         flagged: flaggedDiscussions,

@@ -12,6 +12,7 @@ export default function AdminSidebar() {
     { href: "/protected/clubs", label: "Clubs" },
     { href: "/protected/reviews", label: "Reviews" },
     { href: "/protected/discussions", label: "Discussions" },
+    { href: "/protected/users", label: "Users" },
     { href: "/protected/approvals", label: "Approvals" },
     { href: "/protected/club-recommendations", label: "Recommendations" },
     { href: "/protected/status", label: "System Status" },

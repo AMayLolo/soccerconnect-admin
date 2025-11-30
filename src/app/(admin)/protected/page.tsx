@@ -5,13 +5,13 @@ export const revalidate = 0
 import DashboardStatsShell from "@/components/DashboardStatsShell"
 import StatsProvider from "@/components/StatsProvider"
 import { Badge } from "@/components/ui/badge"
+import { getSupabaseServerAdmin } from "@/lib/supabaseServerAdmin"
 import { isClubProfileComplete } from "@/utils/clubProfileCompletion"
 import normalizeStatsKey from "@/utils/normalizeStatsKey"
 import { createServerClient } from "@supabase/ssr"
 import { ArrowRight } from "lucide-react"
 import { cookies } from "next/headers"
 import Link from "next/link"
-import { getSupabaseServerAdmin } from "@/lib/supabaseServerAdmin"
 
 export default async function DashboardPage() {
   const cookieStore = await cookies()

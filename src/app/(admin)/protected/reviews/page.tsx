@@ -41,17 +41,23 @@ export default async function AdminReviewsPage() {
     );
   }
 
+  // Transform the data to match expected structure (clubs is returned as array from Supabase)
+  const transformedReviews = reviews?.map(r => ({
+    ...r,
+    clubs: Array.isArray(r.clubs) && r.clubs.length > 0 ? r.clubs[0] : null
+  })) || [];
+
   // Calculate stats
-  const totalReviews = reviews?.length || 0;
+  const totalReviews = transformedReviews.length;
   const flaggedReviews = 0; // Flagging not available in current schema
   const removedReviews = 0; // Removal not available in current schema
-  const avgRating = reviews?.filter(r => r.rating)
+  const avgRating = transformedReviews.filter(r => r.rating)
     .reduce((sum, r) => sum + (r.rating || 0), 0) / 
-    (reviews?.filter(r => r.rating).length || 1);
+    (transformedReviews.filter(r => r.rating).length || 1);
 
   return (
     <ReviewsModerationClient 
-      initialReviews={reviews || []}
+      initialReviews={transformedReviews}
       stats={{
         total: totalReviews,
         flagged: flaggedReviews,

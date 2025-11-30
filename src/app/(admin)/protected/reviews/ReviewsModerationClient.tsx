@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 
 type Review = {
   id: string;
@@ -42,6 +42,7 @@ export default function ReviewsModerationClient({
   const [filterStatus, setFilterStatus] = useState<"all" | "flagged" | "removed" | "active">("all");
   const [filterRating, setFilterRating] = useState<"all" | "1" | "2" | "3" | "4" | "5">("all");
   const [sortBy, setSortBy] = useState<"recent" | "flagged" | "rating-low" | "rating-high">("recent");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Filter and sort reviews
   const filteredReviews = useMemo(() => {
@@ -132,6 +133,71 @@ export default function ReviewsModerationClient({
 
     await supabase.from("reviews").delete().eq("id", reviewId);
     setReviews(prev => prev.filter(r => r.id !== reviewId));
+  }
+
+  // Bulk actions
+  function toggleSelectAll() {
+    if (selectedIds.size === filteredReviews.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredReviews.map(r => r.id)));
+    }
+  }
+
+  function toggleSelect(reviewId: string) {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(reviewId)) {
+        newSet.delete(reviewId);
+      } else {
+        newSet.add(reviewId);
+      }
+      return newSet;
+    });
+  }
+
+  async function bulkFlag() {
+    if (selectedIds.size === 0) return;
+    const reason = prompt(`Flag ${selectedIds.size} selected reviews? Enter reason:`);
+    if (reason === null) return;
+
+    const idsArray = Array.from(selectedIds);
+    await supabase
+      .from("reviews")
+      .update({ is_flagged: true, flag_reason: reason })
+      .in("id", idsArray);
+
+    setReviews(prev => prev.map(r =>
+      selectedIds.has(r.id) ? { ...r, is_flagged: true, flag_reason: reason } : r
+    ));
+    setSelectedIds(new Set());
+  }
+
+  async function bulkRemove() {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Remove ${selectedIds.size} selected reviews?`)) return;
+
+    const idsArray = Array.from(selectedIds);
+    await supabase
+      .from("reviews")
+      .update({ is_removed: true })
+      .in("id", idsArray);
+
+    setReviews(prev => prev.map(r =>
+      selectedIds.has(r.id) ? { ...r, is_removed: true } : r
+    ));
+    setSelectedIds(new Set());
+  }
+
+  async function bulkDelete() {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Permanently delete ${selectedIds.size} selected reviews? This cannot be undone.`)) return;
+
+    const idsArray = Array.from(selectedIds);
+    await supabase.from("reviews").delete().in("id", idsArray);
+
+    setReviews(prev => prev.filter(r => !selectedIds.has(r.id)));
+    setSelectedIds(new Set());
   }
 
   return (
@@ -228,8 +294,43 @@ export default function ReviewsModerationClient({
         {/* Results count */}
         <div className="mt-4 text-sm text-gray-600">
           Showing {filteredReviews.length} of {reviews.length} reviews
+          {selectedIds.size > 0 && ` • ${selectedIds.size} selected`}
         </div>
       </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-[#0d7a9b] text-white rounded-lg p-4 mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="font-semibold">{selectedIds.size} selected</span>
+            <div className="h-4 w-px bg-white/30" />
+            <button
+              onClick={bulkFlag}
+              className="px-4 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md font-medium text-sm transition-colors"
+            >
+              🚩 Flag Selected
+            </button>
+            <button
+              onClick={bulkRemove}
+              className="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md font-medium text-sm transition-colors"
+            >
+              Remove Selected
+            </button>
+            <button
+              onClick={bulkDelete}
+              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium text-sm transition-colors"
+            >
+              Delete Selected
+            </button>
+          </div>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-white/80 hover:text-white text-sm"
+          >
+            Clear Selection
+          </button>
+        </div>
+      )}
 
       {/* Reviews List */}
       {filteredReviews.length === 0 ? (
@@ -237,17 +338,39 @@ export default function ReviewsModerationClient({
           <p className="text-gray-500">No reviews found matching your filters</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {filteredReviews.map((review) => (
-            <div
-              key={review.id}
-              className={`bg-white border rounded-lg p-6 hover:shadow-md transition-shadow ${
-                review.is_flagged && !review.is_removed ? "border-red-300 bg-red-50/30" : ""
-              } ${review.is_removed ? "opacity-60" : ""}`}
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2 flex-wrap">
+        <>
+          {/* Select All Checkbox */}
+          <div className="flex items-center gap-2 mb-4 px-2">
+            <input
+              type="checkbox"
+              checked={selectedIds.size === filteredReviews.length && filteredReviews.length > 0}
+              onChange={toggleSelectAll}
+              className="w-4 h-4 text-[#0d7a9b] border-gray-300 rounded focus:ring-[#0d7a9b]"
+            />
+            <label className="text-sm font-medium text-gray-700">
+              Select All ({filteredReviews.length})
+            </label>
+          </div>
+
+          <div className="space-y-4">
+            {filteredReviews.map((review) => (
+              <div
+                key={review.id}
+                className={`bg-white border rounded-lg p-6 hover:shadow-md transition-shadow ${
+                  review.is_flagged && !review.is_removed ? "border-red-300 bg-red-50/30" : ""
+                } ${review.is_removed ? "opacity-60" : ""} ${selectedIds.has(review.id) ? "ring-2 ring-[#0d7a9b]" : ""}`}
+              >
+                {/* Header */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Checkbox */}
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(review.id)}
+                      onChange={() => toggleSelect(review.id)}
+                      className="w-4 h-4 text-[#0d7a9b] border-gray-300 rounded focus:ring-[#0d7a9b]"
+                      onClick={(e) => e.stopPropagation()}
+                    />
                   {/* Rating */}
                   {review.rating && (
                     <span className="text-yellow-500 font-semibold text-lg">
@@ -344,7 +467,8 @@ export default function ReviewsModerationClient({
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

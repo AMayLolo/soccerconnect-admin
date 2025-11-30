@@ -1,5 +1,5 @@
 import { createClientRSC } from "@/lib/supabase/rsc";
-import { getProfileCompletionPercentage, isClubProfileComplete, getMissingFields } from "@/utils/clubProfileCompletion";
+import { getMissingFields, getProfileCompletionPercentage, isClubProfileComplete } from "@/utils/clubProfileCompletion";
 import Link from "next/link";
 
 export default async function AdminClubsPage() {

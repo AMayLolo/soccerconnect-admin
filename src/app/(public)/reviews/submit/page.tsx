@@ -10,7 +10,7 @@ import { ReviewForm } from "./ReviewForm";
 export default async function SubmitReviewPage({ 
   searchParams 
 }: { 
-  searchParams: Promise<{ club_id?: string }> 
+  searchParams: Promise<{ club_id?: string; error?: string }> 
 }) {
   const params = await searchParams;
   const cookieStore = await cookies();
@@ -22,6 +22,7 @@ export default async function SubmitReviewPage({
   );
 
   const club_id = params.club_id;
+  const error = params.error;
 
   if (!club_id) {
     return (
@@ -62,5 +63,5 @@ export default async function SubmitReviewPage({
     redirect(`/auth/login?redirect=/reviews/submit?club_id=${club_id}`);
   }
 
-  return <ReviewForm clubId={club_id} clubName={club?.club_name || "this club"} />;
+  return <ReviewForm clubId={club_id} clubName={club?.club_name || "this club"} initialError={error} />;
 }

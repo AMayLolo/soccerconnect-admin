@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-export function StarRatingInput({ name }: { name: string }) {
+type Props = {
+  name: string;
+  onChange?: (value: number) => void;
+};
+
+export function StarRatingInput({ name, onChange }: Props) {
   const [rating, setRating] = useState(0);
 
   return (
@@ -12,7 +17,10 @@ export function StarRatingInput({ name }: { name: string }) {
         <button
           key={star}
           type="button"
-          onClick={() => setRating(star)}
+          onClick={() => {
+            setRating(star);
+            onChange?.(star);
+          }}
           className={cn(
             "transition-transform",
             star <= rating ? "scale-110" : "opacity-40"

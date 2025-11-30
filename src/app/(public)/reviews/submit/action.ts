@@ -22,18 +22,22 @@ export async function submitReview(formData: FormData) {
   const comment = formData.get("comment")?.toString() ?? "";
   const reviewer_type = formData.get("reviewer_type")?.toString();
 
-  if (!club_id) throw new Error("Missing club_id");
-  if (!rating || rating < 1 || rating > 5)
-    throw new Error("Invalid rating");
-  if (!reviewer_type || !['parent', 'player', 'staff'].includes(reviewer_type))
-    throw new Error("Invalid reviewer type");
+  if (!club_id) {
+    redirect(`/reviews/submit?error=missing_club`);
+  }
+  if (!rating || rating < 1 || rating > 5) {
+    redirect(`/reviews/submit?club_id=${club_id}&error=invalid_rating`);
+  }
+  if (!reviewer_type || !['parent', 'player', 'staff'].includes(reviewer_type)) {
+    redirect(`/reviews/submit?club_id=${club_id}&error=invalid_reviewer_type`);
+  }
 
   // Must be logged in
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (!session?.user) redirect("/auth/login");
+  if (!session?.user) redirect(`/auth/login?redirect=/reviews/submit?club_id=${club_id}`);
 
   const user_id = session.user.id;
 

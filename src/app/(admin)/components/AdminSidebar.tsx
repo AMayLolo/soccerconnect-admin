@@ -11,8 +11,8 @@ export default function AdminSidebar() {
     { href: "/protected", label: "Dashboard" },
     { href: "/protected/clubs", label: "Clubs" },
     { href: "/protected/reviews", label: "Reviews" },
+    { href: "/protected/discussions", label: "Discussions" },
     { href: "/protected/approvals", label: "Approvals" },
-    { href: "/protected/flagged", label: "Flagged Reviews" },
     { href: "/protected/club-recommendations", label: "Recommendations" },
     { href: "/protected/status", label: "System Status" },
     { href: "/protected/profile", label: "Profile" },
@@ -20,11 +20,6 @@ export default function AdminSidebar() {
 
   return (
     <aside className="w-64 bg-white border-r h-screen flex flex-col p-6">
-      {/* Logo */}
-      <Link href="/protected" className="text-xl font-semibold mb-8">
-        Admin Panel
-      </Link>
-
       {/* New Club Button */}
       <Link
         href="/protected/clubs/new"

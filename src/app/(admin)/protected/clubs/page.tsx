@@ -1,5 +1,5 @@
 import { createClientRSC } from "@/lib/supabase/rsc";
-import { getProfileCompletionPercentage, isClubProfileComplete } from "@/utils/clubProfileCompletion";
+import { getProfileCompletionPercentage, isClubProfileComplete, getMissingFields } from "@/utils/clubProfileCompletion";
 import Link from "next/link";
 
 export default async function AdminClubsPage() {
@@ -69,7 +69,9 @@ export default async function AdminClubsPage() {
                 {data.map((club) => {
                   const isComplete = isClubProfileComplete(club);
                   const completionPercent = getProfileCompletionPercentage(club);
+                  const missingFields = getMissingFields(club);
                   const detailUrl = `/protected/clubs/${club.id}`;
+                  const editUrl = `/protected/clubs/${club.id}/update`;
                   
                   console.log("Club row:", { id: club.id, name: club.club_name, url: detailUrl });
                   
@@ -84,7 +86,15 @@ export default async function AdminClubsPage() {
                               className="w-10 h-10 object-contain"
                             />
                           )}
-                          <span className="font-medium text-gray-900 group-hover:text-[#0d7a9b] transition-colors">{club.club_name}</span>
+                          <div>
+                            <span className="font-medium text-gray-900 group-hover:text-[#0d7a9b] transition-colors block">{club.club_name}</span>
+                            {!isComplete && missingFields.length > 0 && (
+                              <span className="text-xs text-orange-600 mt-1 block">
+                                Missing: {missingFields.slice(0, 3).join(", ")}
+                                {missingFields.length > 3 && ` +${missingFields.length - 3} more`}
+                              </span>
+                            )}
+                          </div>
                         </Link>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
@@ -102,12 +112,22 @@ export default async function AdminClubsPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <Link
-                          href={detailUrl}
-                          className="text-[#0d7a9b] hover:text-[#0a5f7a] font-medium text-sm"
-                        >
-                          View Details →
-                        </Link>
+                        <div className="flex items-center justify-end gap-2">
+                          {!isComplete && (
+                            <Link
+                              href={editUrl}
+                              className="px-3 py-1.5 bg-orange-600 text-white rounded-md hover:bg-orange-700 font-medium text-xs transition"
+                            >
+                              Quick Edit
+                            </Link>
+                          )}
+                          <Link
+                            href={detailUrl}
+                            className="text-[#0d7a9b] hover:text-[#0a5f7a] font-medium text-sm"
+                          >
+                            View Details →
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );

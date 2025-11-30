@@ -11,6 +11,7 @@ import { createServerClient } from "@supabase/ssr"
 import { ArrowRight } from "lucide-react"
 import { cookies } from "next/headers"
 import Link from "next/link"
+import { getSupabaseServerAdmin } from "@/lib/supabaseServerAdmin"
 
 export default async function DashboardPage() {
   const cookieStore = await cookies()
@@ -25,19 +26,41 @@ export default async function DashboardPage() {
     }
   )
 
+  const adminSupabase = getSupabaseServerAdmin()
+
   // Server-side initial counts
   const [
     { count: clubsCount }, 
     { count: pendingCount }, 
     { count: reportsCount }, 
     { count: reviewsCount },
-    { data: allClubs }
+    { data: allClubs },
+    { data: recentReviews },
+    { data: recentDiscussions },
+    { data: recentClubs }
   ] = await Promise.all([
     supabase.from("clubs").select("id", { head: true, count: "exact" }),
     supabase.from("profiles").select("id", { head: true, count: "exact" }).eq("status", "pending_review"),
     supabase.from("reports").select("id", { head: true, count: "exact" }),
     supabase.from("reviews").select("id", { head: true, count: "exact" }).eq("is_removed", false),
-    supabase.from("clubs").select("*")
+    supabase.from("clubs").select("*"),
+    // Recent reviews (last 10)
+    adminSupabase.from("reviews").select(`
+      id,
+      rating,
+      inserted_at,
+      club_id,
+      clubs:club_id (club_name)
+    `).order("inserted_at", { ascending: false }).limit(10),
+    // Recent discussions (last 10)
+    adminSupabase.from("discussions").select(`
+      id,
+      inserted_at,
+      club_id,
+      clubs:club_id (club_name)
+    `).order("inserted_at", { ascending: false }).limit(10),
+    // Recently updated clubs (last 10)
+    supabase.from("clubs").select("id, club_name, updated_at").order("updated_at", { ascending: false }).limit(10)
   ])
 
   const totalClubs = clubsCount ?? 0
@@ -67,6 +90,120 @@ export default async function DashboardPage() {
           activeReviews={activeReviews}
         />
       </StatsProvider>
+
+      {/* Recent Activity Section */}
+      <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8">
+        <h2 className="text-xl font-semibold text-foreground mb-6">Recent Activity</h2>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Recent Reviews */}
+          <div className="bg-white border rounded-lg p-6">
+            <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-yellow-500">⭐</span>
+              Latest Reviews
+            </h3>
+            <div className="space-y-3">
+              {recentReviews && recentReviews.length > 0 ? (
+                recentReviews.slice(0, 5).map((review: any) => (
+                  <Link
+                    key={review.id}
+                    href={`/protected/clubs/${review.club_id}/reviews`}
+                    className="block text-sm hover:bg-gray-50 p-2 rounded transition"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-gray-900 truncate">
+                        {review.clubs?.club_name || 'Unknown Club'}
+                      </span>
+                      {review.rating && (
+                        <span className="text-yellow-500 text-xs">{review.rating}★</span>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {new Date(review.inserted_at).toLocaleString()}
+                    </span>
+                  </Link>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 italic">No recent reviews</p>
+              )}
+            </div>
+            <Link
+              href="/protected/reviews"
+              className="mt-4 text-sm text-[#0d7a9b] hover:underline block"
+            >
+              View all reviews →
+            </Link>
+          </div>
+
+          {/* Recent Discussions */}
+          <div className="bg-white border rounded-lg p-6">
+            <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+              <span>💬</span>
+              Latest Discussions
+            </h3>
+            <div className="space-y-3">
+              {recentDiscussions && recentDiscussions.length > 0 ? (
+                recentDiscussions.slice(0, 5).map((discussion: any) => (
+                  <Link
+                    key={discussion.id}
+                    href={`/protected/clubs/${discussion.club_id}/reviews`}
+                    className="block text-sm hover:bg-gray-50 p-2 rounded transition"
+                  >
+                    <div className="font-medium text-gray-900 truncate mb-1">
+                      {discussion.clubs?.club_name || 'Unknown Club'}
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {new Date(discussion.inserted_at).toLocaleString()}
+                    </span>
+                  </Link>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 italic">No recent discussions</p>
+              )}
+            </div>
+            <Link
+              href="/protected/discussions"
+              className="mt-4 text-sm text-[#0d7a9b] hover:underline block"
+            >
+              View all discussions →
+            </Link>
+          </div>
+
+          {/* Recently Updated Clubs */}
+          <div className="bg-white border rounded-lg p-6">
+            <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+              <span>🏟️</span>
+              Recently Updated Clubs
+            </h3>
+            <div className="space-y-3">
+              {recentClubs && recentClubs.length > 0 ? (
+                recentClubs.slice(0, 5).map((club: any) => (
+                  <Link
+                    key={club.id}
+                    href={`/protected/clubs/${club.id}`}
+                    className="block text-sm hover:bg-gray-50 p-2 rounded transition"
+                  >
+                    <div className="font-medium text-gray-900 truncate mb-1">
+                      {club.club_name}
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {new Date(club.updated_at).toLocaleString()}
+                    </span>
+                  </Link>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 italic">No recent updates</p>
+              )}
+            </div>
+            <Link
+              href="/protected/clubs"
+              className="mt-4 text-sm text-[#0d7a9b] hover:underline block"
+            >
+              View all clubs →
+            </Link>
+          </div>
+        </div>
+      </div>
 
       <footer className="border-t border-border bg-muted/30">
         <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8">

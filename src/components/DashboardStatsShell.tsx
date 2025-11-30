@@ -33,16 +33,16 @@ export default function DashboardStatsShell({
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <LiveStatCard label="Total Clubs" table="clubs" initialCount={totalClubs} href="/protected/clubs" />
-              <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm font-medium text-muted-foreground">Club Profiles</p>
+              <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md h-full">
+                <div className="flex flex-col h-full">
+                  <p className="text-sm font-medium text-muted-foreground">Club Profiles</p>
+                  <div className="mt-3 space-y-1">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold text-green-600">{completeClubs}</span>
+                      <span className="text-3xl font-bold text-green-600">{completeClubs}</span>
                       <span className="text-sm text-muted-foreground">complete</span>
                     </div>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold text-orange-600">{incompleteClubs}</span>
+                      <span className="text-3xl font-bold text-orange-600">{incompleteClubs}</span>
                       <span className="text-sm text-muted-foreground">incomplete</span>
                     </div>
                   </div>

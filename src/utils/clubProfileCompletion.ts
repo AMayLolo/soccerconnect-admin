@@ -55,3 +55,18 @@ export function getProfileCompletionPercentage(club: ClubProfile): number {
 
   return Math.round((filledFields / fields.length) * 100);
 }
+
+export function getMissingFields(club: ClubProfile): string[] {
+  const missing: string[] = [];
+  
+  if (!club.club_name?.trim()) missing.push("Name");
+  if (!club.city?.trim()) missing.push("City");
+  if (!club.state?.trim()) missing.push("State");
+  if (!club.website_url?.trim()) missing.push("Website");
+  if (!club.about?.trim()) missing.push("About");
+  if (!club.competition_level?.trim()) missing.push("Competition Level");
+  if (!club.ages?.trim()) missing.push("Ages");
+  if (!club.logo_url && !club.badge_logo_url) missing.push("Logo");
+  
+  return missing;
+}

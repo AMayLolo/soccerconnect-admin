@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Role = "parent" | "staff" | "club_admin" | null;
@@ -39,6 +39,7 @@ type DiscussionRow = {
 export default function ClubReviewsAndDiscussionPage() {
   const supabase = getSupabaseBrowserClient();
   const params = useParams();
+  const router = useRouter();
   const clubId = params?.id as string;
 
   const [activeTab, setActiveTab] = useState<"reviews" | "discussion">("reviews");
@@ -142,13 +143,25 @@ export default function ClubReviewsAndDiscussionPage() {
 
   // Moderation actions
   async function markRemoved(type: "review" | "discussion", id: string) {
-    if (!confirm("Remove this post from visibility?")) return;
+    if (!confirm("Remove this post from visibility? (Users will see '[removed]')")) return;
 
     if (type === "review") {
       await supabase.from("reviews").update({ is_removed: true }).eq("id", id);
       await fetchReviews();
     } else {
       await supabase.from("discussions").update({ is_removed: true }).eq("id", id);
+      await fetchDiscussion();
+    }
+  }
+
+  async function deleteItem(type: "review" | "discussion", id: string) {
+    if (!confirm("Permanently delete this post? This cannot be undone.")) return;
+
+    if (type === "review") {
+      await supabase.from("reviews").delete().eq("id", id);
+      await fetchReviews();
+    } else {
+      await supabase.from("discussions").delete().eq("id", id);
       await fetchDiscussion();
     }
   }
@@ -321,16 +334,22 @@ export default function ClubReviewsAndDiscussionPage() {
                 </button>
               )}
               <button
-                className="text-gray-500 hover:text-gray-700"
+                className="text-orange-600 hover:text-orange-700 hover:underline font-medium"
                 onClick={() => markRemoved("review", review.id)}
               >
                 Remove
               </button>
               <button
-                className="text-gray-500 hover:text-gray-700"
+                className="text-yellow-600 hover:text-yellow-700 hover:underline font-medium"
                 onClick={() => flagItem("review", review.id)}
               >
                 Flag
+              </button>
+              <button
+                className="text-red-600 hover:text-red-700 hover:underline font-medium"
+                onClick={() => deleteItem("review", review.id)}
+              >
+                Delete
               </button>
             </div>
           </div>
@@ -375,16 +394,22 @@ export default function ClubReviewsAndDiscussionPage() {
                       </button>
                     )}
                     <button
-                      className="text-gray-500 hover:text-gray-700"
+                      className="text-orange-600 hover:text-orange-700 hover:underline font-medium"
                       onClick={() => markRemoved("review", child.id)}
                     >
                       Remove
                     </button>
                     <button
-                      className="text-gray-500 hover:text-gray-700"
+                      className="text-yellow-600 hover:text-yellow-700 hover:underline font-medium"
                       onClick={() => flagItem("review", child.id)}
                     >
                       Flag
+                    </button>
+                    <button
+                      className="text-red-600 hover:text-red-700 hover:underline font-medium"
+                      onClick={() => deleteItem("review", child.id)}
+                    >
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -430,16 +455,22 @@ export default function ClubReviewsAndDiscussionPage() {
               </button>
             )}
             <button
-              className="text-gray-500 hover:text-gray-700"
+              className="text-orange-600 hover:text-orange-700 hover:underline font-medium"
               onClick={() => markRemoved("discussion", post.id)}
             >
               Remove
             </button>
             <button
-              className="text-gray-500 hover:text-gray-700"
+              className="text-yellow-600 hover:text-yellow-700 hover:underline font-medium"
               onClick={() => flagItem("discussion", post.id)}
             >
               Flag
+            </button>
+            <button
+              className="text-red-600 hover:text-red-700 hover:underline font-medium"
+              onClick={() => deleteItem("discussion", post.id)}
+            >
+              Delete
             </button>
           </div>
         </div>
@@ -482,16 +513,22 @@ export default function ClubReviewsAndDiscussionPage() {
                       </button>
                     )}
                     <button
-                      className="text-gray-500 hover:text-gray-700"
+                      className="text-orange-600 hover:text-orange-700 hover:underline font-medium"
                       onClick={() => markRemoved("discussion", child.id)}
                     >
                       Remove
                     </button>
                     <button
-                      className="text-gray-500 hover:text-gray-700"
+                      className="text-yellow-600 hover:text-yellow-700 hover:underline font-medium"
                       onClick={() => flagItem("discussion", child.id)}
                     >
                       Flag
+                    </button>
+                    <button
+                      className="text-red-600 hover:text-red-700 hover:underline font-medium"
+                      onClick={() => deleteItem("discussion", child.id)}
+                    >
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -506,6 +543,17 @@ export default function ClubReviewsAndDiscussionPage() {
   // UI render
   return (
     <div className="max-w-4xl mx-auto px-6 py-10">
+      {/* Back Button */}
+      <button
+        onClick={() => router.push(`/protected/clubs/${clubId}`)}
+        className="mb-4 flex items-center gap-2 text-sm text-gray-600 hover:text-[#0d7a9b] transition"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        Back to Club Profile
+      </button>
+
       <h1 className="text-2xl font-semibold mb-6">Reviews & Discussion</h1>
 
       {/* Tab Switcher */}
@@ -535,42 +583,6 @@ export default function ClubReviewsAndDiscussionPage() {
       {/* REVIEWS TAB */}
       {activeTab === "reviews" && (
         <>
-          {/* Form: create new review */}
-          <div className="mb-10 border rounded-lg p-4 bg-white">
-            <h2 className="font-medium text-gray-800 mb-3">
-              Post a new parent review
-            </h2>
-
-            <div className="flex items-center gap-2 mb-3 text-sm">
-              <label className="text-gray-600">Your rating:</label>
-              <select
-                value={newReviewRating}
-                onChange={(e) => setNewReviewRating(Number(e.target.value))}
-                className="border rounded px-2 py-1 text-sm"
-              >
-                {[5, 4, 3, 2, 1].map((r) => (
-                  <option key={r} value={r}>
-                    {r} ★
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <textarea
-              value={newReviewText}
-              onChange={(e) => setNewReviewText(e.target.value)}
-              placeholder="Describe coaching, communication, cost/value, playing time, development..."
-              className="w-full border rounded p-2 h-28 text-sm mb-3"
-            />
-
-            <button
-              onClick={submitReview}
-              className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-            >
-              Post review
-            </button>
-          </div>
-
           {/* List of reviews */}
           {reviewParents.length === 0 ? (
             <p className="text-gray-500 text-sm">
@@ -589,27 +601,6 @@ export default function ClubReviewsAndDiscussionPage() {
       {/* DISCUSSION TAB */}
       {activeTab === "discussion" && (
         <>
-          {/* Form: start new thread */}
-          <div className="mb-10 border rounded-lg p-4 bg-white">
-            <h2 className="font-medium text-gray-800 mb-3">
-              Start a new Q&A thread
-            </h2>
-
-            <textarea
-              value={newThreadText}
-              onChange={(e) => setNewThreadText(e.target.value)}
-              placeholder="Ask about tryouts, team culture, schedule, travel, etc…"
-              className="w-full border rounded p-2 h-24 text-sm mb-3"
-            />
-
-            <button
-              onClick={submitThread}
-              className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-            >
-              Post question
-            </button>
-          </div>
-
           {/* Thread list */}
           {discussionParents.length === 0 ? (
             <p className="text-gray-500 text-sm">

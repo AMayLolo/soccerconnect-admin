@@ -1,4 +1,4 @@
-import { createClientRSC } from "@/lib/supabase/rsc";
+import { getSupabaseServerAdmin } from "@/lib/supabaseServerAdmin";
 import { getCurrentUser } from "@/utils/auth";
 import { redirect } from "next/navigation";
 import RecommendationsTableClient from "./RecommendationsTableClient";
@@ -10,7 +10,7 @@ export default async function ClubRecommendationsPage() {
     redirect("/login?redirect=/protected/club-recommendations");
   }
 
-  const supabase = createClientRSC();
+  const supabase = getSupabaseServerAdmin();
 
   // Fetch all pending recommendations
   const { data: recommendations, error } = await supabase
@@ -20,6 +20,18 @@ export default async function ClubRecommendationsPage() {
 
   if (error) {
     console.error("Error fetching recommendations:", error);
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Club Recommendations
+          </h1>
+          <p className="text-red-600">
+            Error loading recommendations: {error.message}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

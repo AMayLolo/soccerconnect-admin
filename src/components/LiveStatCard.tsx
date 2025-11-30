@@ -19,16 +19,16 @@ export default function LiveStatCard({
   const { count, loading } = useSharedStats(table, filters, initialCount as number | undefined)
 
   const content = (
-    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-      <div className="flex items-center justify-between">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md h-full">
+      <div className="flex flex-col h-full">
         <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      </div>
-      <div className="mt-3 flex items-baseline gap-2">
-        {loading ? (
-          <div className="h-8 w-28 rounded-md bg-muted-foreground/10 animate-pulse" />
-        ) : (
-          <p className="text-2xl font-bold text-foreground">{(count ?? 0).toLocaleString()}</p>
-        )}
+        <div className="mt-3 flex items-baseline gap-2">
+          {loading ? (
+            <div className="h-9 w-28 rounded-md bg-muted-foreground/10 animate-pulse" />
+          ) : (
+            <p className="text-3xl font-bold text-foreground">{(count ?? 0).toLocaleString()}</p>
+          )}
+        </div>
       </div>
     </div>
   )

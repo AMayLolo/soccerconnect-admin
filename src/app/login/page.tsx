@@ -1,10 +1,10 @@
 "use client";
 
-import { useFormState } from "react-dom";
+import { useActionState } from "react";
 import { loginAction } from "./action";
 
 export default function AdminLoginPage() {
-  const [state, formAction] = useFormState(loginAction, { error: "" });
+  const [state, formAction] = useActionState(loginAction, { error: "" });
 
   return (
     <div className="min-h-screen bg-linear-to-br from-[#0d7a9b]/5 to-[#1c3f60]/5 py-12 px-4">

@@ -12,37 +12,67 @@ export default async function UserManagementPage() {
 
   const supabase = getSupabaseServerAdmin();
 
-  // Fetch users with their activity counts
-  const { data: users, error } = await supabase
+  // Fetch users from profiles table (email is not in profiles, we'll get it from auth.users)
+  const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
     .select(`
       user_id,
       full_name,
-      email,
       approved_role,
       status,
       is_banned,
       is_suspended,
+      banned_at,
+      suspended_at,
+      ban_reason,
+      suspension_reason,
       inserted_at,
       updated_at
     `)
     .order("inserted_at", { ascending: false });
 
-  if (error) {
-    console.error("Error fetching users:", error);
+  if (profilesError) {
+    console.error("Error fetching profiles:", profilesError);
     return (
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">User Management</h1>
-          <p className="text-red-600">Error loading users: {error.message}</p>
+          <p className="text-red-600">Error loading users: {profilesError.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Fetch emails from auth.users using admin client
+  const userIds = profiles?.map(p => p.user_id) || [];
+  const { data: authUsers } = await supabase.auth.admin.listUsers();
+  
+  // Create a map of user_id to email
+  const emailMap: Record<string, string> = {};
+  authUsers?.users?.forEach(user => {
+    if (user.id && user.email) {
+      emailMap[user.id] = user.email;
+    }
+  });
+
+  // Merge email data with profiles
+  const users = profiles?.map(profile => ({
+    ...profile,
+    email: emailMap[profile.user_id] || null
+  })) || [];
+
+  if (!users) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">User Management</h1>
+          <p className="text-red-600">Error loading users</p>
         </div>
       </div>
     );
   }
 
   // Fetch activity counts for all users
-  const userIds = users?.map(u => u.user_id) || [];
-  
   const [reviewCounts, discussionCounts] = await Promise.all([
     // Get review counts per user
     supabase

@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import { arrayToCSV, downloadCSV } from "@/utils/csvExport";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -40,6 +41,61 @@ export default function DiscussionsModerationClient({
   const [filterStatus, setFilterStatus] = useState<"all" | "flagged" | "removed" | "active">("all");
   const [sortBy, setSortBy] = useState<"recent" | "flagged">("recent");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [moderationNotes, setModerationNotes] = useState<Record<string, string>>(() => {
+    // Load notes from localStorage
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("moderationNotes_discussions");
+      return stored ? JSON.parse(stored) : {};
+    }
+    return {};
+  });
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteInput, setNoteInput] = useState("");
+
+  // Save notes to localStorage whenever they change
+  function saveNote(discussionId: string, note: string) {
+    const updated = { ...moderationNotes, [discussionId]: note };
+    setModerationNotes(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("moderationNotes_discussions", JSON.stringify(updated));
+    }
+    setEditingNoteId(null);
+    setNoteInput("");
+  }
+
+  function startEditingNote(discussionId: string) {
+    setEditingNoteId(discussionId);
+    setNoteInput(moderationNotes[discussionId] || "");
+  }
+
+  // Export functionality
+  function handleExport() {
+    const headers = [
+      'Discussion ID',
+      'Club Name',
+      'Content',
+      'Date',
+      'Flagged',
+      'Removed',
+      'Flag Reason',
+      'Admin Note'
+    ];
+
+    const rows = filteredDiscussions.map(discussion => [
+      discussion.id,
+      discussion.clubs?.club_name || 'Unknown',
+      discussion.content || '',
+      new Date(discussion.inserted_at).toLocaleString(),
+      discussion.is_flagged ? 'Yes' : 'No',
+      discussion.is_removed ? 'Yes' : 'No',
+      discussion.flag_reason || '',
+      moderationNotes[discussion.id] || ''
+    ]);
+
+    const csv = arrayToCSV(headers, rows);
+    const timestamp = new Date().toISOString().split('T')[0];
+    downloadCSV(`discussions_export_${timestamp}.csv`, csv);
+  }
 
   // Filter and sort discussions
   const filteredDiscussions = useMemo(() => {
@@ -190,9 +246,17 @@ export default function DiscussionsModerationClient({
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Discussions Moderation</h1>
-        <p className="text-gray-600">Monitor, flag, and manage all Q&A discussions</p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Discussions Moderation</h1>
+          <p className="text-gray-600">Monitor, flag, and manage all Q&A discussions</p>
+        </div>
+        <button
+          onClick={handleExport}
+          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
+        >
+          📥 Export to CSV
+        </button>
       </div>
 
       {/* Stats Dashboard */}
@@ -390,8 +454,50 @@ export default function DiscussionsModerationClient({
                 </div>
               )}
 
+              {/* Moderation Notes */}
+              {moderationNotes[discussion.id] && editingNoteId !== discussion.id && (
+                <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-900">
+                  <strong>Admin Note:</strong> {moderationNotes[discussion.id]}
+                </div>
+              )}
+              
+              {editingNoteId === discussion.id && (
+                <div className="mb-3 p-2 bg-gray-50 border rounded">
+                  <textarea
+                    value={noteInput}
+                    onChange={(e) => setNoteInput(e.target.value)}
+                    placeholder="Add internal note (visible only to admins)..."
+                    className="w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-[#0d7a9b]"
+                    rows={2}
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => saveNote(discussion.id, noteInput)}
+                      className="px-3 py-1 bg-[#0d7a9b] text-white rounded text-xs hover:bg-[#0a5f7a]"
+                    >
+                      Save Note
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingNoteId(null);
+                        setNoteInput("");
+                      }}
+                      className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex items-center gap-3 text-xs">
+                <button
+                  onClick={() => startEditingNote(discussion.id)}
+                  className="text-blue-600 hover:underline font-medium"
+                >
+                  {moderationNotes[discussion.id] ? "Edit Note" : "Add Note"}
+                </button>
                 <Link
                   href={`/protected/clubs/${discussion.club_id}/reviews`}
                   className="text-[#0d7a9b] hover:underline font-medium"

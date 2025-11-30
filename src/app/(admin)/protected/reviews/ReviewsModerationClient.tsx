@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import { arrayToCSV, downloadCSV } from "@/utils/csvExport";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -43,6 +44,63 @@ export default function ReviewsModerationClient({
   const [filterRating, setFilterRating] = useState<"all" | "1" | "2" | "3" | "4" | "5">("all");
   const [sortBy, setSortBy] = useState<"recent" | "flagged" | "rating-low" | "rating-high">("recent");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [moderationNotes, setModerationNotes] = useState<Record<string, string>>(() => {
+    // Load notes from localStorage
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("moderationNotes_reviews");
+      return stored ? JSON.parse(stored) : {};
+    }
+    return {};
+  });
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteInput, setNoteInput] = useState("");
+
+  // Save notes to localStorage whenever they change
+  function saveNote(reviewId: string, note: string) {
+    const updated = { ...moderationNotes, [reviewId]: note };
+    setModerationNotes(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("moderationNotes_reviews", JSON.stringify(updated));
+    }
+    setEditingNoteId(null);
+    setNoteInput("");
+  }
+
+  function startEditingNote(reviewId: string) {
+    setEditingNoteId(reviewId);
+    setNoteInput(moderationNotes[reviewId] || "");
+  }
+
+  // Export functionality
+  function handleExport() {
+    const headers = [
+      'Review ID',
+      'Club Name',
+      'Rating',
+      'Content',
+      'Date',
+      'Flagged',
+      'Removed',
+      'Flag Reason',
+      'Admin Note'
+    ];
+
+    const rows = filteredReviews.map(review => [
+      review.id,
+      review.clubs?.club_name || 'Unknown',
+      review.rating,
+      review.content || '',
+      new Date(review.inserted_at).toLocaleString(),
+      review.is_flagged ? 'Yes' : 'No',
+      review.is_removed ? 'Yes' : 'No',
+      review.flag_reason || '',
+      moderationNotes[review.id] || ''
+    ]);
+
+    const csv = arrayToCSV(headers, rows);
+    const timestamp = new Date().toISOString().split('T')[0];
+    downloadCSV(`reviews_export_${timestamp}.csv`, csv);
+  }
 
   // Filter and sort reviews
   const filteredReviews = useMemo(() => {
@@ -203,9 +261,17 @@ export default function ReviewsModerationClient({
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Reviews Moderation</h1>
-        <p className="text-gray-600">Monitor, flag, and manage all platform reviews</p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Reviews Moderation</h1>
+          <p className="text-gray-600">Monitor, flag, and manage all platform reviews</p>
+        </div>
+        <button
+          onClick={handleExport}
+          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
+        >
+          📥 Export to CSV
+        </button>
       </div>
 
       {/* Stats Dashboard */}
@@ -434,6 +500,42 @@ export default function ReviewsModerationClient({
                 </div>
               )}
 
+              {/* Moderation Notes */}
+              {moderationNotes[review.id] && editingNoteId !== review.id && (
+                <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-900">
+                  <strong>Admin Note:</strong> {moderationNotes[review.id]}
+                </div>
+              )}
+              
+              {editingNoteId === review.id && (
+                <div className="mb-3 p-2 bg-gray-50 border rounded">
+                  <textarea
+                    value={noteInput}
+                    onChange={(e) => setNoteInput(e.target.value)}
+                    placeholder="Add internal note (visible only to admins)..."
+                    className="w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-[#0d7a9b]"
+                    rows={2}
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => saveNote(review.id, noteInput)}
+                      className="px-3 py-1 bg-[#0d7a9b] text-white rounded text-xs hover:bg-[#0a5f7a]"
+                    >
+                      Save Note
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingNoteId(null);
+                        setNoteInput("");
+                      }}
+                      className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex items-center gap-3 text-xs">
                 <Link
@@ -442,6 +544,12 @@ export default function ReviewsModerationClient({
                 >
                   View Thread
                 </Link>
+                <button
+                  onClick={() => startEditingNote(review.id)}
+                  className="text-blue-600 hover:underline font-medium"
+                >
+                  {moderationNotes[review.id] ? "Edit Note" : "Add Note"}
+                </button>
                 <button
                   onClick={() => toggleFlag(review.id, review.is_flagged || false)}
                   className={`hover:underline font-medium ${

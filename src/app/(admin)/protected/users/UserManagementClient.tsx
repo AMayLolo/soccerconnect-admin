@@ -86,11 +86,23 @@ export default function UserManagementClient({
   // User actions
   async function toggleBan(userId: string, currentlyBanned: boolean) {
     const action = currentlyBanned ? "unban" : "ban";
+    let reason: string | null = null;
+    
+    if (!currentlyBanned) {
+      reason = prompt("Enter ban reason (optional):");
+      if (reason === null) return; // User cancelled
+    }
+    
     if (!confirm(`Are you sure you want to ${action} this user?`)) return;
 
     const { error } = await supabase
       .from("profiles")
-      .update({ is_banned: !currentlyBanned, updated_at: new Date().toISOString() })
+      .update({ 
+        is_banned: !currentlyBanned, 
+        banned_at: !currentlyBanned ? new Date().toISOString() : null,
+        ban_reason: !currentlyBanned ? reason : null,
+        updated_at: new Date().toISOString() 
+      })
       .eq("user_id", userId);
 
     if (error) {
@@ -105,11 +117,23 @@ export default function UserManagementClient({
 
   async function toggleSuspend(userId: string, currentlySuspended: boolean) {
     const action = currentlySuspended ? "unsuspend" : "suspend";
+    let reason: string | null = null;
+    
+    if (!currentlySuspended) {
+      reason = prompt("Enter suspension reason (optional):");
+      if (reason === null) return; // User cancelled
+    }
+    
     if (!confirm(`Are you sure you want to ${action} this user?`)) return;
 
     const { error } = await supabase
       .from("profiles")
-      .update({ is_suspended: !currentlySuspended, updated_at: new Date().toISOString() })
+      .update({ 
+        is_suspended: !currentlySuspended,
+        suspended_at: !currentlySuspended ? new Date().toISOString() : null,
+        suspension_reason: !currentlySuspended ? reason : null,
+        updated_at: new Date().toISOString() 
+      })
       .eq("user_id", userId);
 
     if (error) {

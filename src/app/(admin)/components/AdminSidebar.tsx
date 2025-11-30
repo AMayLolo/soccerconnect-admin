@@ -22,7 +22,7 @@ export default function AdminSidebar() {
   ];
 
   return (
-    <aside className="w-64 bg-white border-r h-screen flex flex-col p-6">
+    <aside className="w-64 bg-white h-screen sticky top-0 flex flex-col p-6 overflow-y-auto">
       {/* New Club Button */}
       <Link
         href="/protected/clubs/new"

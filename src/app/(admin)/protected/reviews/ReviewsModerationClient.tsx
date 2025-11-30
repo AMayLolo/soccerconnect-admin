@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { arrayToCSV, downloadCSV } from "@/utils/csvExport";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useDebouncedValue } from "../../../../../hooks/useDebouncedValue";
 
 type Review = {
   id: string;
@@ -40,10 +41,54 @@ export default function ReviewsModerationClient({
   const supabase = getSupabaseBrowserClient();
   const [reviews, setReviews] = useState<Review[]>(initialReviews);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "flagged" | "removed" | "active">("all");
-  const [filterRating, setFilterRating] = useState<"all" | "1" | "2" | "3" | "4" | "5">("all");
-  const [sortBy, setSortBy] = useState<"recent" | "flagged" | "rating-low" | "rating-high">("recent");
+  const debouncedSearch = useDebouncedValue(searchTerm, 300);
+  const [filterStatus, setFilterStatus] = useState<"all" | "flagged" | "removed" | "active">(() => {
+    if (typeof window !== "undefined") {
+      return (window.localStorage.getItem("reviews_filterStatus") as any) || "all";
+    }
+    return "all";
+  });
+  const [filterRating, setFilterRating] = useState<"all" | "1" | "2" | "3" | "4" | "5">(() => {
+    if (typeof window !== "undefined") {
+      return (window.localStorage.getItem("reviews_filterRating") as any) || "all";
+    }
+    return "all";
+  });
+  const [sortBy, setSortBy] = useState<"recent" | "flagged" | "rating-low" | "rating-high">(() => {
+    if (typeof window !== "undefined") {
+      return (window.localStorage.getItem("reviews_sortBy") as any) || "recent";
+    }
+    return "recent";
+  });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [itemsPerPage, setItemsPerPage] = useState<10 | 25 | 50 | 100>(() => {
+    if (typeof window !== "undefined") {
+      const saved = window.localStorage.getItem("reviews_itemsPerPage");
+      if (saved) return parseInt(saved) as 10 | 25 | 50 | 100;
+    }
+    return 25;
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("reviews_itemsPerPage", String(itemsPerPage));
+    }
+  }, [itemsPerPage]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("reviews_filterStatus", filterStatus);
+    }
+  }, [filterStatus]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("reviews_filterRating", filterRating);
+    }
+  }, [filterRating]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("reviews_sortBy", sortBy);
+    }
+  }, [sortBy]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [moderationNotes, setModerationNotes] = useState<Record<string, string>>(() => {
     // Load notes from localStorage
     if (typeof window !== "undefined") {
@@ -107,10 +152,10 @@ export default function ReviewsModerationClient({
     let filtered = [...reviews];
 
     // Filter by search term
-    if (searchTerm) {
+    if (debouncedSearch) {
       filtered = filtered.filter(r => 
-        r.content?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.clubs?.club_name?.toLowerCase().includes(searchTerm.toLowerCase())
+        r.content?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        r.clubs?.club_name?.toLowerCase().includes(debouncedSearch.toLowerCase())
       );
     }
 
@@ -145,7 +190,19 @@ export default function ReviewsModerationClient({
     });
 
     return filtered;
-  }, [reviews, searchTerm, filterStatus, filterRating, sortBy]);
+  }, [reviews, debouncedSearch, filterStatus, filterRating, sortBy]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredReviews.length / itemsPerPage));
+  const paginatedReviews = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredReviews.slice(start, start + itemsPerPage);
+  }, [filteredReviews, currentPage, itemsPerPage]);
+
+  function goToPage(page: number) {
+    const next = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(next);
+  }
 
   // Moderation actions
   async function toggleFlag(reviewId: string, currentlyFlagged: boolean) {
@@ -358,9 +415,43 @@ export default function ReviewsModerationClient({
         </div>
 
         {/* Results count */}
-        <div className="mt-4 text-sm text-gray-600">
-          Showing {filteredReviews.length} of {reviews.length} reviews
-          {selectedIds.size > 0 && ` • ${selectedIds.size} selected`}
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            Showing {paginatedReviews.length} of {filteredReviews.length} filtered reviews
+            {selectedIds.size > 0 && ` • ${selectedIds.size} selected`}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setSearchTerm("");
+                setFilterStatus("all");
+                setFilterRating("all");
+                setSortBy("recent");
+                setItemsPerPage(25);
+                setCurrentPage(1);
+                if (typeof window !== "undefined") {
+                  localStorage.removeItem("reviews_filterStatus");
+                  localStorage.removeItem("reviews_filterRating");
+                  localStorage.removeItem("reviews_sortBy");
+                  localStorage.removeItem("reviews_itemsPerPage");
+                }
+              }}
+              className="px-3 py-1 border rounded text-sm hover:bg-gray-100"
+            >
+              Reset Filters
+            </button>
+            <label className="text-sm text-gray-700">Per page:</label>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => { setItemsPerPage(parseInt(e.target.value) as any); setCurrentPage(1); }}
+              className="px-2 py-1 border border-gray-300 rounded text-sm"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -419,7 +510,7 @@ export default function ReviewsModerationClient({
           </div>
 
           <div className="space-y-4">
-            {filteredReviews.map((review) => (
+            {paginatedReviews.map((review) => (
               <div
                 key={review.id}
                 className={`bg-white border rounded-lg p-6 hover:shadow-md transition-shadow ${
@@ -575,6 +666,43 @@ export default function ReviewsModerationClient({
               </div>
             </div>
           ))}
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="mt-6 flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => goToPage(1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+              >
+                First
+              </button>
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+              >
+                Next
+              </button>
+              <button
+                onClick={() => goToPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+              >
+                Last
+              </button>
+            </div>
           </div>
         </>
       )}

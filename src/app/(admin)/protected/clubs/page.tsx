@@ -1,16 +1,18 @@
 import { createClientRSC } from "@/lib/supabase/rsc";
-import { getMissingFields, getProfileCompletionPercentage, isClubProfileComplete } from "@/utils/clubProfileCompletion";
+import { isClubProfileComplete } from "@/utils/clubProfileCompletion";
 import Link from "next/link";
+import ClubsClient from "./ClubsClient";
+import CSVImportButton from "./CSVImportButton";
 import ExportClubsButton from "./ExportClubsButton";
+import { RefreshButton } from "./RefreshButton";
 
 export default async function AdminClubsPage() {
   const supabase = createClientRSC();
 
   const { data, error } = await supabase
     .from("clubs")
-    .select("*");
-
-  console.log("Clubs data sample:", data?.[0]); // Debug: check what fields exist
+    .select("*")
+    .order("club_name", { ascending: true });
 
   const completeClubs = data?.filter(club => isClubProfileComplete(club)) ?? [];
   const incompleteClubs = data?.filter(club => !isClubProfileComplete(club)) ?? [];
@@ -33,10 +35,15 @@ export default async function AdminClubsPage() {
           </div>
         </div>
         
-        {/* Export Button */}
-        {data && data.length > 0 && (
-          <ExportClubsButton clubs={data} />
-        )}
+        {/* Export and CSV Import Buttons */}
+        <div className="flex gap-2">
+          {data && data.length > 0 && (
+            <ExportClubsButton clubs={data} />
+          )}
+          <RefreshButton>
+            <CSVImportButton />
+          </RefreshButton>
+        </div>
       </div>
 
       {error ? (
@@ -54,102 +61,7 @@ export default async function AdminClubsPage() {
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Club Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {data.map((club) => {
-                  const isComplete = isClubProfileComplete(club);
-                  const completionPercent = getProfileCompletionPercentage(club);
-                  const missingFields = getMissingFields(club);
-                  const detailUrl = `/protected/clubs/${club.id}`;
-                  const editUrl = `/protected/clubs/${club.id}/update`;
-                  
-                  console.log("Club row:", { id: club.id, name: club.club_name, url: detailUrl });
-                  
-                  return (
-                    <tr key={club.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <Link href={detailUrl} className="flex items-center gap-3 group">
-                          <div className="w-10 h-10 shrink-0 flex items-center justify-center">
-                            {club.badge_logo_url ? (
-                              <img
-                                src={club.badge_logo_url}
-                                alt={`${club.club_name} logo`}
-                                className="w-10 h-10 object-contain"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs font-medium">
-                                {club.club_name.substring(0, 2).toUpperCase()}
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <span className="font-medium text-gray-900 group-hover:text-[#0d7a9b] transition-colors block">{club.club_name}</span>
-                            {!isComplete && missingFields.length > 0 && (
-                              <span className="text-xs text-orange-600 mt-1 block">
-                                Missing: {missingFields.slice(0, 3).join(", ")}
-                                {missingFields.length > 3 && ` +${missingFields.length - 3} more`}
-                              </span>
-                            )}
-                          </div>
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {club.city}, {club.state}
-                      </td>
-                      <td className="px-6 py-4">
-                        {isComplete ? (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-300">
-                            ✓ Complete
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-300">
-                            {completionPercent}% Complete
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {!isComplete && (
-                            <Link
-                              href={editUrl}
-                              className="px-3 py-1.5 bg-orange-600 text-white rounded-md hover:bg-orange-700 font-medium text-xs transition"
-                            >
-                              Quick Edit
-                            </Link>
-                          )}
-                          <Link
-                            href={detailUrl}
-                            className="text-[#0d7a9b] hover:text-[#0a5f7a] font-medium text-sm"
-                          >
-                            View Details →
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <ClubsClient initialClubs={data} />
       )}
     </div>
   );

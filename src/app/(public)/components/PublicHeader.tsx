@@ -1,13 +1,13 @@
 "use client";
 
+import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import { AuthResponse, Session, User } from "@supabase/supabase-js";
+import { LogOut, User as UserIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import AuthRequiredLink from "./AuthRequiredLink";
-import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { useEffect, useState } from "react";
-import { User, Session, AuthResponse } from "@supabase/supabase-js";
-import { LogOut, User as UserIcon } from "lucide-react";
+import AuthRequiredLink from "./AuthRequiredLink";
 
 export default function PublicHeader() {
   const pathname = usePathname();
